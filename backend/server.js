@@ -50,6 +50,9 @@ app.use('/api/status', (req, res) => {
 });
 app.use('/api/v1/auth', userRouter);
 app.use('/api/v1/messages', messageRouter);
+app.use('/', (req, res) => {
+  res.send('NPMChat API is running');
+});
 
 await connectDB();
 
