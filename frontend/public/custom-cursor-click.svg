@@ -1,0 +1,10 @@
+<svg width="40" height="32" viewBox="0 0 40 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="2" y="2" width="36" height="28" rx="8" fill="#e9d5ff" stroke="black" stroke-width="3"/>
+  <g>
+    <path d="M18 10v7.5M18 17.5V22c0 1.5 2 1.5 2 0v-4.5M20 17.5V12c0-1.5 2-1.5 2 0v5.5M22 17.5V14c0-1.5 2-1.5 2 0v3.5M24 17.5V16c0-1.5 2-1.5 2 0v1.5" stroke="black" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <path d="M18 22c-2.5 0-4-1.5-4-4v-2c0-1.5 2-1.5 2 0v2c0 1.5 2 1.5 2 0v-7.5" stroke="black" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+  <filter id="shadow" x="0" y="0" width="40" height="32">
+    <feDropShadow dx="0" dy="2" stdDeviation="1.5" flood-color="#000" flood-opacity="0.25"/>
+  </filter>
+</svg> 
