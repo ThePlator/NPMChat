@@ -11,7 +11,7 @@ const messageRouter = express.Router();
 
 messageRouter.get('/', protectRoute, getUserForSidebar);
 messageRouter.get('/:userId', protectRoute, getMessages);
-messageRouter.put('mark-as-seen/:userId', protectRoute, markMessagesAsSeen);
+messageRouter.put('/mark-as-seen/:userId', protectRoute, markMessagesAsSeen);
 messageRouter.post('/send/:receiverId', protectRoute, sendMessage);
 
 export default messageRouter;
