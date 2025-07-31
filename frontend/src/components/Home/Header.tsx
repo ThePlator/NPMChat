@@ -2,6 +2,7 @@
 
 import { Search, Heart, Menu, X } from 'lucide-react';
 import { useState } from 'react';
+import Link from 'next/link';
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -31,11 +32,11 @@ export default function Header() {
             className="font-semibold text-black hover:text-purple-400 transition-colors">
             GitHub
           </a>
-          <a
-            href="#features"
+          <Link
+            href="/features"
             className="font-semibold text-black hover:text-purple-400 transition-colors">
             Features
-          </a>
+          </Link>
         </nav>
 
         {/* Icons */}
@@ -74,11 +75,11 @@ export default function Header() {
               className="font-semibold text-black hover:text-purple-400 transition-colors">
               GitHub
             </a>
-            <a
-              href="#features"
+            <Link
+              href="/features"
               className="font-semibold text-black hover:text-purple-400 transition-colors">
               Features
-            </a>
+            </Link>
           </nav>
         </div>
       )}
