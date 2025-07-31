@@ -27,7 +27,8 @@ export default function Header() {
             Docs
           </a>
           <a
-            href="#github"
+            href="https://github.com/ThePlator/NPMChat "
+            target="_blank"
             className="font-semibold text-black hover:text-purple-400 transition-colors">
             GitHub
           </a>
