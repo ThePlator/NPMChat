@@ -22,17 +22,17 @@ export default function Header() {
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-8">
           <a
-            href="#docs"
+            href="/docs"
             className="font-semibold text-black hover:text-purple-400 transition-colors">
             Docs
           </a>
           <a
-            href="#github"
+            href="/github"
             className="font-semibold text-black hover:text-purple-400 transition-colors">
             GitHub
           </a>
           <a
-            href="#features"
+            href="/features"
             className="font-semibold text-black hover:text-purple-400 transition-colors">
             Features
           </a>
@@ -65,17 +65,17 @@ export default function Header() {
         <div className="md:hidden mt-4 pb-4 border-t-2 border-black">
           <nav className="flex flex-col space-y-4 pt-4">
             <a
-              href="#docs"
+              href="/docs"
               className="font-semibold text-black hover:text-purple-400 transition-colors">
               Docs
             </a>
             <a
-              href="#github"
+              href="/github"
               className="font-semibold text-black hover:text-purple-400 transition-colors">
               GitHub
             </a>
             <a
-              href="#features"
+              href="/features"
               className="font-semibold text-black hover:text-purple-400 transition-colors">
               Features
             </a>
