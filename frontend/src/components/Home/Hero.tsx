@@ -4,20 +4,20 @@ export default function Hero() {
   const accent = '#b39ddb'; // pastel purple
   const accentGreen = '#39ff14'; // neon green
   return (
-    <section className="w-full bg-white py-20 px-6">
+    <section className="w-full bg-background py-20 px-6">
       <div className="max-w-7xl mx-auto">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           {/* Left Content */}
           <div className="space-y-8">
             <div className="space-y-4">
               <h1
-                className="text-5xl md:text-7xl font-black leading-tight text-black"
+                className="text-5xl md:text-7xl font-black leading-tight text-primary"
                 style={{ letterSpacing: -2 }}>
                 Chat. Collaborate. Ship code.
                 <br />
                 <span style={{ color: accentGreen }}>Welcome to</span>{' '}
                 <span style={{ color: accent }}>NPMChat</span>
-                <span className="block text-2xl md:text-3xl font-bold mt-4 text-black">
+                <span className="block text-2xl md:text-3xl font-bold mt-4 text-primary">
                   — the neo-brutalist chat for devs.
                 </span>
               </h1>
@@ -35,7 +35,7 @@ export default function Hero() {
                   </button>
                 </Link>
               </div>
-              <p className="text-sm text-black font-medium mt-2">
+              <p className="text-sm text-primary font-medium mt-2">
                 Minimal. Bold. For devs who love npm.
               </p>
             </div>

@@ -16,7 +16,7 @@ export default function UseCasesSection() {
       <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
         {/* Left Title */}
         <div>
-          <h2 className="text-3xl md:text-4xl font-black text-black mb-4">
+          <h2 className="text-3xl md:text-4xl font-black text-primary mb-4">
             Who's This For? Anyone Who Loves to Build & Learn!
           </h2>
         </div>
