@@ -100,13 +100,19 @@ export const sendMessage = async (req, res) => {
       imageUrl = uploadedImage.secure_url; // Get the secure URL of the uploaded image
     }
 
-    const newMessage = await Message.create({
+    const messageData = {
       senderId,
       receiverId,
       text,
       image: imageUrl || '',
-      file: file || undefined,
-    });
+    };
+
+    // Add file data if present
+    if (file) {
+      messageData.file = file;
+    }
+
+    const newMessage = await Message.create(messageData);
 
     const receiverSocketId = userSocketMap[receiverId]; // Get the socket ID of the receiver
     if (receiverSocketId) {

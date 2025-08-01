@@ -124,10 +124,14 @@ export const MessageProvider = ({
   const sendMessage = useCallback(
     async (receiverId: string, text: string, image?: string, file?: any) => {
       try {
+        console.log('sendMessage called with:', { receiverId, text, image, file });
         const body: any = { text };
         if (image) body.image = image;
         if (file) body.file = file;
+        
+        console.log('Sending message with body:', body);
         const res = await api.post(`/send/${receiverId}`, body);
+        console.log('Message API response:', res);
 
         // Handle different possible response structures
         let messageData;
@@ -150,6 +154,8 @@ export const MessageProvider = ({
           ...(messageData.image && { image: messageData.image }),
           ...(messageData.file && { file: messageData.file }),
         };
+
+        console.log('Adding new message to state:', newMessage);
 
         setMessages((msgs: any[]) => [...msgs, newMessage]);
 

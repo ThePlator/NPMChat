@@ -68,25 +68,4 @@ export const api = {
     fetcher(path, { method: 'POST', body: JSON.stringify(body) }, base),
   put: (path: string, body?: any, base: 'auth' | 'messages' | 'files' = 'messages') =>
     fetcher(path, { method: 'PUT', body: JSON.stringify(body) }, base),
-  
-  // Special method for file uploads
-  uploadFile: async (file: File) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    
-    const token = getToken();
-    const response = await fetch(`${BASES.files}/upload`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-      body: formData,
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Upload failed: ${response.statusText}`);
-    }
-    
-    return response.json();
-  },
 };

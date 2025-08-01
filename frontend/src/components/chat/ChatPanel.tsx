@@ -5,7 +5,6 @@ import { useAuth } from '../../app/AuthContext'
 import { BASES } from '../../app/fetcher'
 import EmojiPicker from 'emoji-picker-react'
 import { ModeToggle } from '../ui/mode-toggle'
-import ProgressBar from '../chat/ProgressBar'
 
 export default function ChatPanel({
 	selectedUser,
@@ -30,12 +29,9 @@ export default function ChatPanel({
 	const [image, setImage] = useState<string | null>(null)
 	const [enlargedImage, setEnlargedImage] = useState<string | null>(null)
 	const [showUserDetails, setShowUserDetails] = useState(false)
-	const [uploadingFile, setUploadingFile] = useState<{
-		file: File
-		progress: number
-		uploadId: string
-	} | null>(null)
+	const [uploadingFile, setUploadingFile] = useState(false)
 	const [uploadProgress, setUploadProgress] = useState(0)
+	const [uploadSuccess, setUploadSuccess] = useState(false)
 
 	function getFileIcon(mimetype: string) {
 		if (mimetype.startsWith('image/')) return '🖼️'
@@ -91,130 +87,108 @@ export default function ChatPanel({
 		}
 	}
 
-	const handleFileUpload = async (file: File) => {
-		if (!selectedUser) return
-
-		console.log('File selected:', {
-			name: file.name,
-			type: file.type,
-			size: file.size,
-		})
-
-		// Validate file size (5MB limit)
-		const MAX_SIZE = 5 * 1024 * 1024 // 5MB
-		if (file.size > MAX_SIZE) {
-			alert('File size must be less than 5MB')
+	async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+		const file = e.target.files?.[0]
+		if (!file || !selectedUser) {
+			console.log('No file selected or no user selected')
 			return
 		}
 
-		// Validate file type
-		const allowedTypes = [
-			'application/pdf',
-			'application/msword',
-			'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-			'application/zip',
-			'application/x-zip-compressed',
-			'text/plain',
-			'text/csv',
-			'application/json',
-			'image/jpeg',
-			'image/jpg',
-			'image/png',
-			'image/gif',
-		]
-
-		console.log('File type check:', {
-			fileType: file.type,
-			isAllowed: allowedTypes.includes(file.type),
-			allowedTypes: allowedTypes,
-		})
-
-		if (!allowedTypes.includes(file.type)) {
-			alert(
-				`File type "${file.type}" not supported. Please upload PDF, DOC, DOCX, ZIP, TXT, CSV, JSON, or image files.`
-			)
-			return
-		}
-
-		const uploadId = Date.now().toString()
-		setUploadingFile({ file, progress: 0, uploadId })
+		console.log('Starting file upload:', file.name, file.size, file.type)
+		console.log('Selected user:', selectedUser)
+		setUploadingFile(true)
+		setUploadProgress(0)
 
 		try {
 			const formData = new FormData()
 			formData.append('file', file)
 
+			// Create XMLHttpRequest for progress tracking
 			const xhr = new XMLHttpRequest()
-
-			// Create a promise to handle the upload
-			const uploadPromise = new Promise<any>((resolve, reject) => {
-				xhr.upload.addEventListener('progress', (event) => {
-					if (event.lengthComputable) {
-						const progress = (event.loaded / event.total) * 100
-						setUploadingFile((prev) =>
-							prev ? { ...prev, progress } : null
-						)
-					}
-				})
-
-				xhr.addEventListener('load', () => {
-					if (xhr.status === 200) {
-						try {
-							const response = JSON.parse(xhr.responseText)
-							resolve(response)
-						} catch (e) {
-							reject(new Error('Invalid response format'))
-						}
-					} else {
-						reject(new Error(`Upload failed with status ${xhr.status}`))
-					}
-				})
-
-				xhr.addEventListener('error', () => {
-					reject(new Error('Network error during upload'))
-				})
-
-				xhr.addEventListener('abort', () => {
-					reject(new Error('Upload cancelled'))
-				})
+			
+			// Track upload progress
+			xhr.upload.addEventListener('progress', (event) => {
+				if (event.lengthComputable) {
+					const percentComplete = (event.loaded / event.total) * 100
+					console.log('Upload progress:', percentComplete)
+					setUploadProgress(percentComplete)
+				}
 			})
 
-			xhr.open('POST', `http://localhost:8080/api/files/upload`)
+			// Handle response
+			xhr.addEventListener('load', async () => {
+				console.log('Upload response status:', xhr.status)
+				console.log('Upload response text:', xhr.responseText)
+				
+				try {
+					if (xhr.status === 200) {
+						const response = JSON.parse(xhr.responseText)
+						console.log('Parsed response:', response)
+						
+						if (response.success && response.file) {
+							console.log('File uploaded successfully:', response.file)
+							console.log('Calling sendMessage with file:', response.file)
+							
+							// Show success animation
+							setUploadSuccess(true)
+							setTimeout(() => setUploadSuccess(false), 2000)
+							
+							// Send file message
+							await sendMessage(selectedUser._id, '', undefined, response.file)
+							console.log('File message sent successfully')
+						} else {
+							console.error('Upload failed:', response.message || 'Unknown error')
+							alert('Upload failed: ' + (response.message || 'Unknown error'))
+						}
+					} else {
+						console.error('Upload failed with status:', xhr.status)
+						alert('Upload failed with status: ' + xhr.status)
+					}
+				} catch (parseError) {
+					console.error('Error parsing response:', parseError)
+					alert('Error parsing server response')
+				}
+				
+				setUploadingFile(false)
+				setUploadProgress(0)
+			})
 
-			// Add auth token if available
+			xhr.addEventListener('error', (error) => {
+				console.error('File upload error:', error)
+				alert('File upload failed')
+				setUploadingFile(false)
+				setUploadProgress(0)
+			})
+
+			xhr.addEventListener('timeout', () => {
+				console.error('File upload timeout')
+				alert('File upload timeout')
+				setUploadingFile(false)
+				setUploadProgress(0)
+			})
+
+			// Get auth token for request
 			const token = localStorage.getItem('token')
+			const uploadUrl = `${BASES.files}/upload`
+			console.log('Upload URL:', uploadUrl)
+			console.log('Auth token:', token ? 'Present' : 'Missing')
+			
+			xhr.open('POST', uploadUrl)
 			if (token) {
 				xhr.setRequestHeader('Authorization', `Bearer ${token}`)
 			}
-
+			xhr.timeout = 30000 // 30 second timeout
 			xhr.send(formData)
 
-			const response = await uploadPromise
-
-			// Send file message via socket
-			await sendMessage('', selectedUser._id, undefined, {
-				url: response.url,
-				filename: response.filename,
-				size: response.size,
-				mimetype: response.mimetype,
-			})
-
-			// Show success animation
-			setUploadingFile((prev) => (prev ? { ...prev, progress: 100 } : null))
-
-			// Clear upload state after short delay
-			setTimeout(() => {
-				setUploadingFile(null)
-			}, 1500)
 		} catch (error) {
-			console.error('File upload error:', error)
-			alert(`Upload failed: ${error.message}`)
-			setUploadingFile(null)
+			console.error('Error uploading file:', error)
+			alert('Error uploading file: ' + error)
+			setUploadingFile(false)
+			setUploadProgress(0)
 		}
-	}
-
-	const cancelUpload = () => {
-		setUploadingFile(null)
-		// Note: In a real implementation, you'd also abort the XMLHttpRequest
+		
+		// Clear the file input
+		e.target.value = ''
 	}
 
 	return (
@@ -428,41 +402,46 @@ export default function ChatPanel({
 									</div>
 								)}
 								{msg.file && (
-									<div className='bg-gray-50 border border-gray-200 rounded-lg p-3 max-w-sm'>
-										<div className='flex items-center space-x-3'>
-											<div className='flex-shrink-0'>
-												<div className='w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center'>
+									<div className='relative group rounded-2xl overflow-hidden m-2 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 border-2 border-purple-200 p-4 hover:shadow-lg transition-all duration-300 hover:scale-[1.02]'>
+										<div className='flex items-center gap-4'>
+											<div className='relative'>
+												<div className='w-12 h-12 bg-gradient-to-br from-purple-400 to-pink-400 rounded-2xl flex items-center justify-center text-2xl shadow-lg'>
 													{getFileIcon(msg.file.mimetype)}
+												</div>
+												<div className='absolute -top-1 -right-1 w-4 h-4 bg-green-400 rounded-full flex items-center justify-center text-xs'>
+													✓
 												</div>
 											</div>
 											<div className='flex-1 min-w-0'>
-												<p className='text-sm font-medium text-gray-900 truncate'>
-													{msg.file.filename}
+												<p className='text-sm font-semibold text-gray-800 truncate mb-1 flex items-center gap-2'>
+													📎 {msg.file.filename}
 												</p>
-												<p className='text-xs text-gray-500'>
-													{formatFileSize(msg.file.size)}
-												</p>
+												<div className='flex items-center gap-2'>
+													<span className='text-xs text-purple-600 bg-purple-100 px-2 py-1 rounded-full font-medium'>
+														{formatFileSize(msg.file.size)}
+													</span>
+													<span className='text-xs text-green-600 bg-green-100 px-2 py-1 rounded-full font-medium'>
+														✨ Ready
+													</span>
+												</div>
 											</div>
-											<div className='flex-shrink-0'>
-												<a
-													href={`http://localhost:8080${msg.file.url}`}
-													download={msg.file.filename}
-													className='inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-full text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors'
-												>
-													<svg
-														className='w-3 h-3 mr-1'
-														fill='currentColor'
-														viewBox='0 0 20 20'
-													>
-														<path
-															fillRule='evenodd'
-															d='M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z'
-															clipRule='evenodd'
-														/>
-													</svg>
-													Download
-												</a>
-											</div>
+											<a
+												href={`http://localhost:8080${msg.file.url}`}
+												download={msg.file.filename}
+												className='group relative bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-full w-10 h-10 flex items-center justify-center text-lg font-bold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110'
+												title='Download file'
+											>
+												<span className='group-hover:animate-bounce'>⬇️</span>
+												<div className='absolute inset-0 rounded-full bg-white opacity-0 group-hover:opacity-20 transition-opacity duration-300'></div>
+											</a>
+										</div>
+										
+										{/* Cute decorative elements */}
+										<div className='absolute top-2 right-2 text-purple-300 opacity-50 animate-pulse'>
+											✨
+										</div>
+										<div className='absolute bottom-2 left-2 text-pink-300 opacity-30 animate-pulse' style={{ animationDelay: '1s' }}>
+											💫
 										</div>
 									</div>
 								)}
@@ -480,14 +459,92 @@ export default function ChatPanel({
 				})}
 				<div ref={messageEndRef} />
 			</div>
-			{/* Upload Progress Bar */}
+			{/* Upload Success Animation */}
+			{uploadSuccess && (
+				<div className='fixed inset-0 flex items-center justify-center z-50 pointer-events-none'>
+					<div className='bg-white rounded-3xl p-8 shadow-2xl border-4 border-green-300 animate-bounce'>
+						<div className='text-center'>
+							<div className='text-6xl mb-4 animate-pulse'>🎉</div>
+							<div className='text-2xl font-bold text-green-600 mb-2'>Success!</div>
+							<div className='text-lg text-gray-600'>File uploaded successfully!</div>
+							<div className='flex justify-center gap-2 mt-4'>
+								<span className='animate-bounce'>✨</span>
+								<span className='animate-bounce' style={{ animationDelay: '0.1s' }}>🎯</span>
+								<span className='animate-bounce' style={{ animationDelay: '0.2s' }}>✨</span>
+							</div>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{/* Upload Progress Bar - Cute Design */}
 			{uploadingFile && (
-				<ProgressBar
-					progress={uploadingFile.progress}
-					fileName={uploadingFile.file.name}
-					fileSize={uploadingFile.file.size}
-					onCancel={cancelUpload}
-				/>
+				<div className='mx-4 my-3 p-4 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-2xl shadow-lg animate-pulse'>
+					<div className='flex items-center gap-3 mb-3'>
+						<div className='relative'>
+							<div className='w-8 h-8 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full flex items-center justify-center animate-spin'>
+								📄
+							</div>
+							<div className='absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-bounce'></div>
+						</div>
+						<div className='flex-1'>
+							<div className='flex items-center justify-between mb-1'>
+								<span className='text-sm font-medium text-purple-700'>Uploading your file...</span>
+								<span className='text-sm font-bold text-pink-600 bg-white px-2 py-1 rounded-full shadow-sm'>
+									{Math.round(uploadProgress)}%
+								</span>
+							</div>
+							<div className='text-xs text-purple-500'>Almost there! ✨</div>
+						</div>
+					</div>
+					
+					{/* Cute Progress Bar */}
+					<div className='relative w-full bg-purple-100 rounded-full h-3 overflow-hidden shadow-inner'>
+						<div 
+							className='h-3 rounded-full transition-all duration-500 ease-out bg-gradient-to-r from-purple-400 via-pink-400 to-purple-500 relative overflow-hidden'
+							style={{ width: `${uploadProgress}%` }}
+						>
+							{/* Animated shimmer effect */}
+							<div className='absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer'></div>
+							
+							{/* Moving sparkles */}
+							<div className='absolute top-0 left-0 w-full h-full'>
+								<div className='absolute top-1/2 left-1/4 w-1 h-1 bg-white rounded-full animate-ping opacity-75'></div>
+								<div className='absolute top-1/4 left-1/2 w-1 h-1 bg-white rounded-full animate-ping opacity-50' style={{ animationDelay: '0.5s' }}></div>
+								<div className='absolute top-3/4 left-3/4 w-1 h-1 bg-white rounded-full animate-ping opacity-75' style={{ animationDelay: '1s' }}></div>
+							</div>
+						</div>
+						
+						{/* Progress bar end cap with emoji */}
+						{uploadProgress > 5 && (
+							<div 
+								className='absolute top-1/2 transform -translate-y-1/2 text-lg transition-all duration-500'
+								style={{ left: `${Math.min(uploadProgress, 95)}%` }}
+							>
+								🚀
+							</div>
+						)}
+					</div>
+					
+					{/* Cute message based on progress */}
+					<div className='mt-2 text-center'>
+						{uploadProgress < 25 && (
+							<span className='text-xs text-purple-500'>🌟 Starting the magic...</span>
+						)}
+						{uploadProgress >= 25 && uploadProgress < 50 && (
+							<span className='text-xs text-purple-500'>🎯 Making progress...</span>
+						)}
+						{uploadProgress >= 50 && uploadProgress < 75 && (
+							<span className='text-xs text-purple-500'>🎨 Almost ready...</span>
+						)}
+						{uploadProgress >= 75 && uploadProgress < 95 && (
+							<span className='text-xs text-purple-500'>🎉 Nearly there!</span>
+						)}
+						{uploadProgress >= 95 && (
+							<span className='text-xs text-purple-500'>✨ Finishing up...</span>
+						)}
+					</div>
+				</div>
 			)}
 			{/* Input */}
 			<form
@@ -535,15 +592,10 @@ export default function ChatPanel({
 				>
 					<input
 						type='file'
-						accept='.pdf,.doc,.docx,.zip,.txt,.csv,.json,.jpg,.jpeg,.png,.gif'
+						accept='.pdf,.doc,.docx,.zip,.txt,.csv,.json'
 						className='hidden'
-						onChange={(e) => {
-							const file = e.target.files?.[0]
-							if (file) {
-								handleFileUpload(file)
-							}
-						}}
-						disabled={uploadingFile !== null}
+						onChange={handleFileUpload}
+						disabled={uploadingFile}
 					/>
 					<span role='img' aria-label='Attach file'>
 						📄

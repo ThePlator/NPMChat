@@ -10,13 +10,18 @@ import { Server } from 'socket.io';
 
 const app = express();
 const server = http.createServer(app);
-app.use(express.urlencoded({ extended: true }));
 
 const { CLIENT_URL, NODE_ENV } = process.env;
 const allowedOrigins = [
   CLIENT_URL,
   NODE_ENV !== 'production' ? 'http://localhost:3000' : null,
 ].filter(Boolean);
+
+if (!CLIENT_URL && NODE_ENV === 'production') {
+  console.error(
+    'ERROR: CLIENT_URL is not set. Set it to your frontend URL (e.g. https://your-frontend.example).'
+  );
+}
 
 const corsOptions = {
   origin(origin, callback) {
@@ -78,7 +83,7 @@ app.use('/', (req, res) => {
 
 await connectDB();
 
-const PORT = 8080;
+const PORT = process.env.PORT || 8080;
 
 server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
