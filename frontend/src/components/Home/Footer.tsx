@@ -1,4 +1,5 @@
 import { Github } from 'lucide-react';
+import Link from 'next/link';
 
 export default function Footer() {
   return (
@@ -15,6 +16,7 @@ export default function Footer() {
           <a
             href="https://github.com/ThePlator/NPMChat"
             target="_blank"
+            rel="noopener noreferrer"
             className="flex items-center space-x-2 font-semibold text-black hover:text-purple-400 border-2 border-black px-3 py-1 rounded-sm brutal-shadow">
             <Github className="w-4 h-4" />
             <span>View Source on GitHub</span>
@@ -22,17 +24,17 @@ export default function Footer() {
         </div>
         {/* Legal Links */}
         <div className="flex flex-wrap items-center space-x-4 text-black font-semibold">
-          <a href="#privacy" className="hover:underline">
+          <Link href="/privacy" className="hover:underline">
             Privacy
-          </a>
+          </Link>
           <span>|</span>
-          <a href="#terms" className="hover:underline">
+          <Link href="#terms" className="hover:underline">
             Terms
-          </a>
+          </Link>
           <span>|</span>
-          <a href="#license" className="hover:underline">
+          <Link href="/license" className="hover:underline">
             License
-          </a>
+          </Link>
         </div>
       </div>
     </footer>
