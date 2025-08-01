@@ -14,6 +14,7 @@ export default function Footer() {
         <div className="flex items-center space-x-6">
           <a
             href="https://github.com/ThePlator/NPMChat"
+
             className="flex items-center space-x-2 font-semibold text-black hover:text-purple-400 border-2 border-black px-3 py-1 rounded-sm brutal-shadow">
             <Github className="w-4 h-4" />
             <span>View Source on GitHub</span>
