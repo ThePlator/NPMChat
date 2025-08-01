@@ -122,10 +122,11 @@ export const MessageProvider = ({
 
   // Send message (API: POST /send/:receiverId)
   const sendMessage = useCallback(
-    async (receiverId: string, text: string, image?: string) => {
+    async (receiverId: string, text: string, image?: string, file?: any) => {
       try {
         const body: any = { text };
         if (image) body.image = image;
+        if (file) body.file = file;
         const res = await api.post(`/send/${receiverId}`, body);
 
         // Handle different possible response structures
@@ -147,6 +148,7 @@ export const MessageProvider = ({
           timestamp: messageData.timestamp || new Date().toISOString(),
           seen: messageData.seen || false,
           ...(messageData.image && { image: messageData.image }),
+          ...(messageData.file && { file: messageData.file }),
         };
 
         setMessages((msgs: any[]) => [...msgs, newMessage]);

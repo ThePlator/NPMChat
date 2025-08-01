@@ -5,22 +5,18 @@ import http from 'http';
 import { connectDB } from './lib/db.js';
 import userRouter from './routes/user.routes.js';
 import messageRouter from './routes/message.routes.js';
+import fileRouter from './routes/file.routes.js';
 import { Server } from 'socket.io';
 
 const app = express();
 const server = http.createServer(app);
+app.use(express.urlencoded({ extended: true }));
 
 const { CLIENT_URL, NODE_ENV } = process.env;
 const allowedOrigins = [
   CLIENT_URL,
   NODE_ENV !== 'production' ? 'http://localhost:3000' : null,
 ].filter(Boolean);
-
-if (!CLIENT_URL && NODE_ENV === 'production') {
-  console.error(
-    'ERROR: CLIENT_URL is not set. Set it to your frontend URL (e.g. https://your-frontend.example).'
-  );
-}
 
 const corsOptions = {
   origin(origin, callback) {
@@ -75,13 +71,14 @@ app.use('/api/status', (req, res) => {
 });
 app.use('/api/v1/auth', userRouter);
 app.use('/api/v1/messages', messageRouter);
+app.use('/api/files', fileRouter);
 app.use('/', (req, res) => {
   res.send('NPMChat API is running');
 });
 
 await connectDB();
 
-const PORT = process.env.PORT || 8080;
+const PORT = 8080;
 
 server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);

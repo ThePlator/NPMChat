@@ -18,6 +18,20 @@ const messageSchema = new mongoose.Schema(
     image: {
       type: String,
     },
+    file: {
+      url: {
+        type: String,
+      },
+      filename: {
+        type: String,
+      },
+      size: {
+        type: Number,
+      },
+      mimetype: {
+        type: String,
+      },
+    },
     seen: {
       type: Boolean,
       default: false,

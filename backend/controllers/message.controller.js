@@ -90,7 +90,7 @@ export const markMessagesAsSeen = async (req, res) => {
 // send message to selected user
 export const sendMessage = async (req, res) => {
   try {
-    const { text, image } = req.body; // Get the message text and image from the request body
+    const { text, image, file } = req.body; // Get the message text, image, and file from the request body
     const receiverId = req.params.receiverId; // Get the receiver's userId from the request parameter
     const senderId = req.user._id; // Get the sender's userId from the
 
@@ -105,6 +105,7 @@ export const sendMessage = async (req, res) => {
       receiverId,
       text,
       image: imageUrl || '',
+      file: file || undefined,
     });
 
     const receiverSocketId = userSocketMap[receiverId]; // Get the socket ID of the receiver

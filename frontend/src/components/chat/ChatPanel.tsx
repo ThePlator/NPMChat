@@ -2,8 +2,10 @@
 import React, { useRef, useEffect, useState } from 'react'
 import { useMessageContext } from '../../app/MessageContext'
 import { useAuth } from '../../app/AuthContext'
+import { BASES } from '../../app/fetcher'
 import EmojiPicker from 'emoji-picker-react'
 import { ModeToggle } from '../ui/mode-toggle'
+import ProgressBar from '../chat/ProgressBar'
 
 export default function ChatPanel({
 	selectedUser,
@@ -28,6 +30,29 @@ export default function ChatPanel({
 	const [image, setImage] = useState<string | null>(null)
 	const [enlargedImage, setEnlargedImage] = useState<string | null>(null)
 	const [showUserDetails, setShowUserDetails] = useState(false)
+	const [uploadingFile, setUploadingFile] = useState<{
+		file: File
+		progress: number
+		uploadId: string
+	} | null>(null)
+	const [uploadProgress, setUploadProgress] = useState(0)
+
+	function getFileIcon(mimetype: string) {
+		if (mimetype.startsWith('image/')) return '🖼️'
+		if (mimetype === 'application/pdf') return '📄'
+		if (mimetype.includes('word') || mimetype.includes('document')) return '📝'
+		if (mimetype.includes('zip') || mimetype.includes('compressed')) return '📦'
+		if (mimetype.startsWith('text/')) return '📄'
+		return '📁'
+	}
+
+	function formatFileSize(bytes: number) {
+		if (bytes === 0) return '0 Bytes'
+		const k = 1024
+		const sizes = ['Bytes', 'KB', 'MB', 'GB']
+		const i = Math.floor(Math.log(bytes) / Math.log(k))
+		return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+	}
 
 	useEffect(() => {
 		messageEndRef.current?.scrollIntoView({ behavior: 'auto' })
@@ -45,7 +70,7 @@ export default function ChatPanel({
 
 	async function handleSend() {
 		if ((input.trim() === '' && !image) || !selectedUser) return
-		await sendMessage(selectedUser._id, input, image || undefined)
+		await sendMessage(selectedUser._id, input, image || undefined, undefined)
 		setInput('')
 		setImage(null)
 	}
@@ -64,6 +89,132 @@ export default function ChatPanel({
 			}
 			reader.readAsDataURL(file)
 		}
+	}
+
+	const handleFileUpload = async (file: File) => {
+		if (!selectedUser) return
+
+		console.log('File selected:', {
+			name: file.name,
+			type: file.type,
+			size: file.size,
+		})
+
+		// Validate file size (5MB limit)
+		const MAX_SIZE = 5 * 1024 * 1024 // 5MB
+		if (file.size > MAX_SIZE) {
+			alert('File size must be less than 5MB')
+			return
+		}
+
+		// Validate file type
+		const allowedTypes = [
+			'application/pdf',
+			'application/msword',
+			'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+			'application/zip',
+			'application/x-zip-compressed',
+			'text/plain',
+			'text/csv',
+			'application/json',
+			'image/jpeg',
+			'image/jpg',
+			'image/png',
+			'image/gif',
+		]
+
+		console.log('File type check:', {
+			fileType: file.type,
+			isAllowed: allowedTypes.includes(file.type),
+			allowedTypes: allowedTypes,
+		})
+
+		if (!allowedTypes.includes(file.type)) {
+			alert(
+				`File type "${file.type}" not supported. Please upload PDF, DOC, DOCX, ZIP, TXT, CSV, JSON, or image files.`
+			)
+			return
+		}
+
+		const uploadId = Date.now().toString()
+		setUploadingFile({ file, progress: 0, uploadId })
+
+		try {
+			const formData = new FormData()
+			formData.append('file', file)
+
+			const xhr = new XMLHttpRequest()
+
+			// Create a promise to handle the upload
+			const uploadPromise = new Promise<any>((resolve, reject) => {
+				xhr.upload.addEventListener('progress', (event) => {
+					if (event.lengthComputable) {
+						const progress = (event.loaded / event.total) * 100
+						setUploadingFile((prev) =>
+							prev ? { ...prev, progress } : null
+						)
+					}
+				})
+
+				xhr.addEventListener('load', () => {
+					if (xhr.status === 200) {
+						try {
+							const response = JSON.parse(xhr.responseText)
+							resolve(response)
+						} catch (e) {
+							reject(new Error('Invalid response format'))
+						}
+					} else {
+						reject(new Error(`Upload failed with status ${xhr.status}`))
+					}
+				})
+
+				xhr.addEventListener('error', () => {
+					reject(new Error('Network error during upload'))
+				})
+
+				xhr.addEventListener('abort', () => {
+					reject(new Error('Upload cancelled'))
+				})
+			})
+
+			xhr.open('POST', `http://localhost:8080/api/files/upload`)
+
+			// Add auth token if available
+			const token = localStorage.getItem('token')
+			if (token) {
+				xhr.setRequestHeader('Authorization', `Bearer ${token}`)
+			}
+
+			xhr.send(formData)
+
+			const response = await uploadPromise
+
+			// Send file message via socket
+			await sendMessage('', selectedUser._id, undefined, {
+				url: response.url,
+				filename: response.filename,
+				size: response.size,
+				mimetype: response.mimetype,
+			})
+
+			// Show success animation
+			setUploadingFile((prev) => (prev ? { ...prev, progress: 100 } : null))
+
+			// Clear upload state after short delay
+			setTimeout(() => {
+				setUploadingFile(null)
+			}, 1500)
+		} catch (error) {
+			console.error('File upload error:', error)
+			alert(`Upload failed: ${error.message}`)
+			setUploadingFile(null)
+		}
+	}
+
+	const cancelUpload = () => {
+		setUploadingFile(null)
+		// Note: In a real implementation, you'd also abort the XMLHttpRequest
 	}
 
 	return (
@@ -276,6 +427,45 @@ export default function ChatPanel({
 										</a>
 									</div>
 								)}
+								{msg.file && (
+									<div className='bg-gray-50 border border-gray-200 rounded-lg p-3 max-w-sm'>
+										<div className='flex items-center space-x-3'>
+											<div className='flex-shrink-0'>
+												<div className='w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center'>
+													{getFileIcon(msg.file.mimetype)}
+												</div>
+											</div>
+											<div className='flex-1 min-w-0'>
+												<p className='text-sm font-medium text-gray-900 truncate'>
+													{msg.file.filename}
+												</p>
+												<p className='text-xs text-gray-500'>
+													{formatFileSize(msg.file.size)}
+												</p>
+											</div>
+											<div className='flex-shrink-0'>
+												<a
+													href={`http://localhost:8080${msg.file.url}`}
+													download={msg.file.filename}
+													className='inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-full text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors'
+												>
+													<svg
+														className='w-3 h-3 mr-1'
+														fill='currentColor'
+														viewBox='0 0 20 20'
+													>
+														<path
+															fillRule='evenodd'
+															d='M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z'
+															clipRule='evenodd'
+														/>
+													</svg>
+													Download
+												</a>
+											</div>
+										</div>
+									</div>
+								)}
 								{msg.text && (
 									<span className='px-4 pb-1 pt-1 break-words text-base text-black'>
 										{msg.text}
@@ -290,6 +480,15 @@ export default function ChatPanel({
 				})}
 				<div ref={messageEndRef} />
 			</div>
+			{/* Upload Progress Bar */}
+			{uploadingFile && (
+				<ProgressBar
+					progress={uploadingFile.progress}
+					fileName={uploadingFile.file.name}
+					fileSize={uploadingFile.file.size}
+					onCancel={cancelUpload}
+				/>
+			)}
 			{/* Input */}
 			<form
 				className='flex items-center gap-2 border-t-2 border-sidebar-border  px-2 py-2 bg-background sticky bottom-0 z-10 relative'
@@ -328,6 +527,26 @@ export default function ChatPanel({
 					/>
 					<span role='img' aria-label='Attach'>
 						📎
+					</span>
+				</label>
+				<label
+					className='px-2 py-2 cursor-pointer border-2 border-sidebar-border rounded-full bg-accent hover:bg-[#b39ddb] flex items-center justify-center'
+					title='Attach file'
+				>
+					<input
+						type='file'
+						accept='.pdf,.doc,.docx,.zip,.txt,.csv,.json,.jpg,.jpeg,.png,.gif'
+						className='hidden'
+						onChange={(e) => {
+							const file = e.target.files?.[0]
+							if (file) {
+								handleFileUpload(file)
+							}
+						}}
+						disabled={uploadingFile !== null}
+					/>
+					<span role='img' aria-label='Attach file'>
+						📄
 					</span>
 				</label>
 				{image && (
