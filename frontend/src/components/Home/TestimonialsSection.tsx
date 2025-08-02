@@ -88,7 +88,7 @@ export default function TestimonialsSection() {
   return (
     <section className="w-full py-16 px-4">
       <div className="max-w-7xl mx-auto">
-        <h2 className="text-3xl md:text-4xl font-black text-black mb-10">
+        <h2 className="text-3xl md:text-4xl font-black text-primary mb-10">
           Just for Fun — Leave a Note!
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
