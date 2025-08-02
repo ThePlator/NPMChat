@@ -67,7 +67,6 @@ function SignupPageContent() {
       setLoading(false);
     }
   }
-
   return (
     <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#b39ddb]/40 via-white to-[#39ff14]/20 relative overflow-hidden">
       <Toast
