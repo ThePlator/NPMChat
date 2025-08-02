@@ -1,4 +1,5 @@
 import { Github } from 'lucide-react';
+import Link from 'next/link';
 
 export default function Footer() {
   return (
@@ -21,17 +22,17 @@ export default function Footer() {
         </div>
         {/* Legal Links */}
         <div className="flex flex-wrap items-center space-x-4 text-black font-semibold">
-          <a href="/privacy" className="hover:underline">
+          <Link href="/privacy" className="hover:underline">
             Privacy
-          </a>
+          </Link>
           <span>|</span>
-          <a href="/terms" className="hover:underline">
+          <Link href="/terms" className="hover:underline">
             Terms
-          </a>
+          </Link>
           <span>|</span>
-          <a href="/license" className="hover:underline">
+          <Link href="/license" className="hover:underline">
             License
-          </a>
+          </Link>
         </div>
       </div>
     </footer>

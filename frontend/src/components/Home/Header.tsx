@@ -2,19 +2,20 @@
 
 import { Search, Heart, Menu, X } from 'lucide-react';
 import { useState } from 'react';
+import { ModeToggle } from '../ui/mode-toggle';
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
-    <header className="w-full bg-white border-b-4 border-black px-6 py-4">
+    <header className="w-full bg-background border-b-4 border-primary px-6 py-4">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         {/* Logo */}
         <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-black rounded-sm flex items-center justify-center">
-            <span className="text-white font-bold text-sm">N</span>
+          <div className="w-8 h-8 bg-primary rounded-sm flex items-center justify-center">
+            <span className="text-background font-bold text-sm">N</span>
           </div>
-          <span className="font-bold text-2xl tracking-tight text-black">
+          <span className="font-bold text-2xl tracking-tight text-primary">
             NPMChat
           </span>
         </div>
@@ -27,7 +28,7 @@ export default function Header() {
             Docs
           </a>
           <a
-            href="/github"
+            href="https://github.com/ThePlator/NPMChat"
             className="font-semibold text-black hover:text-purple-400 transition-colors">
             GitHub
           </a>
@@ -40,11 +41,12 @@ export default function Header() {
 
         {/* Icons */}
         <div className="hidden md:flex items-center space-x-4">
+          <ModeToggle />
           <button className="p-2 hover:bg-gray-100 rounded-sm transition-colors">
-            <Search className="w-5 h-5 text-black" />
+            <Search className="w-5 h-5 text-primary" />
           </button>
           <button className="p-2 hover:bg-gray-100 rounded-sm transition-colors">
-            <Heart className="w-5 h-5 text-black" />
+            <Heart className="w-5 h-5 text-primary" />
           </button>
         </div>
 
