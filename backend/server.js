@@ -5,6 +5,7 @@ import http from 'http';
 import { connectDB } from './lib/db.js';
 import userRouter from './routes/user.routes.js';
 import messageRouter from './routes/message.routes.js';
+import fileRouter from './routes/file.routes.js';
 import { Server } from 'socket.io';
 
 const app = express();
@@ -75,6 +76,7 @@ app.use('/api/status', (req, res) => {
 });
 app.use('/api/v1/auth', userRouter);
 app.use('/api/v1/messages', messageRouter);
+app.use('/api/files', fileRouter);
 app.use('/', (req, res) => {
   res.send('NPMChat API is running');
 });
