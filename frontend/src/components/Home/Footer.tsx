@@ -1,4 +1,5 @@
 import { Github } from 'lucide-react';
+import Link from 'next/link';
 
 export default function Footer() {
   return (
@@ -14,7 +15,8 @@ export default function Footer() {
         <div className="flex items-center space-x-6">
           <a
             href="#github"
-            className="flex items-center space-x-2 font-semibold text-black hover:text-purple-400 border-2 border-black px-3 py-1 rounded-sm brutal-shadow">
+            className="flex items-center space-x-2 font-semibold text-black hover:text-purple-400 border-2 border-black px-3 py-1 rounded-sm brutal-shadow"
+          >
             <Github className="w-4 h-4" />
             <span>View Source on GitHub</span>
           </a>
@@ -25,9 +27,9 @@ export default function Footer() {
             Privacy
           </a>
           <span>|</span>
-          <a href="#terms" className="hover:underline">
+          <Link href="/terms" className="hover:underline">
             Terms
-          </a>
+          </Link>
           <span>|</span>
           <a href="#license" className="hover:underline">
             License
