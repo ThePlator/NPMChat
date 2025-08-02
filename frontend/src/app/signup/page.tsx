@@ -5,11 +5,17 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '../AuthContext';
 import Toast from '../../components/Toast';
 import ProtectedRoute from '../../components/ProtectedRoute';
+import zxcvbn from 'zxcvbn';
 
 const accent = '#b39ddb'; // pastel purple
 const accentGreen = '#39ff14'; // neon green
 
 function SignupPageContent() {
+  const [passwordStrength, setPasswordStrength]=useState<{
+    score:number;
+    feedback: string;
+  }>({score:0, feedback:''});
+
   const router = useRouter();
   const { signup, error: authError, loading: authLoading } = useAuth();
   const [form, setForm] = useState({ name: '', email: '', password: '' });
@@ -117,11 +123,23 @@ function SignupPageContent() {
             className="border-2 border-black px-4 py-2 text-lg bg-[#eaffea] focus:bg-[#39ff14]/40 focus:outline-none focus:border-[${accentGreen}] transition-all cursor-[url('/custom-cursor-arrow.svg'),_pointer]"
             type="password"
             value={form.password}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, password: e.target.value }))
-            }
+
+            onChange={(e) => {
+              const password = e.target.value;
+              setForm((f) => ({ ...f, password}));
+              const result = zxcvbn(password);
+              setPasswordStrength({
+                score: result.score, feedback: result.feedback.suggestions[0] || '',
+              });
+            }}
             autoComplete="new-password"
           />
+          {form.password && (
+            <div className='mt-1 text-sm font-bold'><div className={`h-2 rounded-sm transition-all`} style={{width: `${(passwordStrength.score+1)*20}%`,
+          backgroundColor: passwordStrength.score<2?'red':passwordStrength.score===2?'orange':passwordStrength.score===3?'#ffd700':'green',}}/>
+          <div className='mt-1 text-black'>Strength:{['Too Weak','Weak','Fair','Good','Strong'][passwordStrength.score]}</div>
+          {passwordStrength.feedback && (<div className='text-xs text-gray-600 mt-1'>{passwordStrength.feedback}</div>)}</div>
+          )}
           {errors.password && (
             <span className="text-red-600 text-sm font-normal">
               {errors.password}
