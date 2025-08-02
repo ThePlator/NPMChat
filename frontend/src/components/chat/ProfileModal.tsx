@@ -30,7 +30,7 @@ export default function ProfileModal({
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-2">
-      <div className="relative bg-white border-4 border-black rounded-lg p-4 md:p-8 w-full max-w-xs md:max-w-md shadow-lg flex flex-col gap-4 md:gap-6">
+      <div className="relative bg-accent border-4 border-sidebar-border rounded-lg p-4 md:p-8 w-full max-w-xs md:max-w-md shadow-lg flex flex-col gap-4 md:gap-6">
         <button
           className="absolute top-3 right-3 text-black font-extrabold text-2xl hover:text-[#39ff14]"
           onClick={onClose}
@@ -63,10 +63,10 @@ export default function ProfileModal({
           />
           <span className="text-xs text-gray-500">Click to change photo</span>
         </div>
-        <label className="flex flex-col gap-1 text-black font-bold text-lg">
+        <label className="flex flex-col gap-1 text-primary font-bold text-lg">
           Name
           <input
-            className="border-2 border-black px-4 py-2 text-lg bg-[#f3e8ff] focus:bg-[#b39ddb]/60 focus:outline-none focus:border-[#39ff14] transition-all rounded-lg"
+            className="border-2 border-sidebar-border text-black px-4 py-2 text-lg bg-[#f3e8ff] focus:bg-[#b39ddb]/60 focus:outline-none focus:border-[#39ff14] transition-all rounded-lg"
             type="text"
             value={profileDraft.name}
             onChange={(e) =>
@@ -74,10 +74,10 @@ export default function ProfileModal({
             }
           />
         </label>
-        <label className="flex flex-col gap-1 text-black font-bold text-lg">
+        <label className="flex flex-col gap-1 text-primary font-bold text-lg">
           Bio
           <textarea
-            className="border-2 border-black px-4 py-2 text-lg bg-[#eaffea] focus:bg-[#39ff14]/40 focus:outline-none focus:border-[#b39ddb] transition-all rounded-lg min-h-[60px]"
+            className="border-2 border-sidebar-border px-4 py-2 text-black text-lg bg-[#eaffea]  focus:bg-[#39ff14]/40 focus:outline-none focus:border-[#b39ddb] transition-all rounded-lg min-h-[60px]"
             value={profileDraft.bio}
             onChange={(e) =>
               setProfileDraft((p: any) => ({ ...p, bio: e.target.value }))
