@@ -5,12 +5,7 @@ const BASES = {
   messages:
     process.env.NEXT_PUBLIC_MESSAGES_API_BASE ||
     'http://localhost:8080/api/v1/messages',
-  files:
-    process.env.NEXT_PUBLIC_FILES_API_BASE ||
-    'http://localhost:8080/api/files',
 };
-
-export { BASES };
 
 let token: string | null = null;
 
@@ -34,7 +29,7 @@ export function getToken() {
 async function fetcher(
   path: string,
   options: RequestInit = {},
-  base: 'auth' | 'messages' | 'files' = 'messages'
+  base: 'auth' | 'messages' = 'messages'
 ) {
   console.log(path);
 
@@ -62,10 +57,10 @@ async function fetcher(
 }
 
 export const api = {
-  get: (path: string, base: 'auth' | 'messages' | 'files' = 'messages') =>
+  get: (path: string, base: 'auth' | 'messages' = 'messages') =>
     fetcher(path, { method: 'GET' }, base),
-  post: (path: string, body?: any, base: 'auth' | 'messages' | 'files' = 'messages') =>
+  post: (path: string, body?: any, base: 'auth' | 'messages' = 'messages') =>
     fetcher(path, { method: 'POST', body: JSON.stringify(body) }, base),
-  put: (path: string, body?: any, base: 'auth' | 'messages' | 'files' = 'messages') =>
+  put: (path: string, body?: any, base: 'auth' | 'messages' = 'messages') =>
     fetcher(path, { method: 'PUT', body: JSON.stringify(body) }, base),
 };
