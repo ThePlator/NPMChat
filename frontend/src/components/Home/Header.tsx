@@ -36,7 +36,7 @@ export default function Header() {
 
           <Link
             href="/features"
-            className="font-semibold text-black hover:text-purple-400 transition-colors">
+            className="font-semibold text-foreground hover:text-purple-400 transition-colors">
             Features
           </Link>
         </nav>
@@ -44,29 +44,29 @@ export default function Header() {
         {/* Icons */}
         <div className="hidden md:flex items-center space-x-4">
           <ModeToggle />
-          <button className="p-2 hover:bg-gray-100 rounded-sm transition-colors">
+          <button className="p-2 hover:bg-muted rounded-sm transition-colors">
             <Search className="w-5 h-5 text-primary" />
           </button>
-          <button className="p-2 hover:bg-gray-100 rounded-sm transition-colors">
+          <button className="p-2 hover:bg-muted rounded-sm transition-colors">
             <Heart className="w-5 h-5 text-primary" />
           </button>
         </div>
 
         {/* Mobile Menu Button */}
         <button
-          className="md:hidden p-2 border-2 border-black rounded-sm"
+          className="md:hidden p-2 border-2 border-foreground  rounded-sm"
           onClick={() => setIsMenuOpen(!isMenuOpen)}>
           {isMenuOpen ? (
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5 text-foreground" />
           ) : (
-            <Menu className="w-5 h-5" />
+            <Menu className="w-5 h-5 text-foreground" />
           )}
         </button>
       </div>
 
       {/* Mobile Menu */}
       {isMenuOpen && (
-        <div className="md:hidden mt-4 pb-4 border-t-2 border-black">
+        <div className="md:hidden mt-4 pb-4 border-t-2 border-foreground">
           <nav className="flex flex-col space-y-4 pt-4">
             <a
               href="/docs"
@@ -76,12 +76,13 @@ export default function Header() {
             <a
               href="/github"
               className="font-semibold text-black hover:text-purple-400 transition-colors">
+
               GitHub
             </a>
 
             <Link
               href="/features"
-              className="font-semibold text-black hover:text-purple-400 transition-colors">
+              className="font-semibold text-foreground hover:text-purple-400 transition-colors">
               Features
             </Link>
           </nav>
