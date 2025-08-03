@@ -14,11 +14,10 @@ export default function Footer() {
         {/* Social Links */}
         <div className="flex items-center space-x-6">
           <a
-            href="https://github.com/ThePlator/NPMChat"
-            className="flex items-center space-x-2 text-black hover:underline font-semibold"
+            href="https://github.com"
             target="_blank"
             rel="noopener noreferrer"
-          >
+            className="flex items-center space-x-2 hover:underline">
             <Github className="w-4 h-4" />
             <span>View Source on GitHub</span>
           </a>
