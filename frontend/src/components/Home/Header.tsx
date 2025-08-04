@@ -24,16 +24,16 @@ export default function Header() {
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-8">
           <a
-            href="#docs"
-            className="font-semibold text-primary hover:text-purple-400 transition-colors">
+            href="/docs"
+            className="font-semibold text-black hover:text-purple-400 transition-colors">
             Docs
           </a>
           <a
-            href="https://github.com/ThePlator/NPMChat "
-            target="_blank"
-            className="font-semibold text-primary hover:text-purple-400 transition-colors">
+            href="https://github.com/ThePlator/NPMChat"
+            className="font-semibold text-black hover:text-purple-400 transition-colors">
             GitHub
           </a>
+
           <Link
             href="/features"
             className="font-semibold text-foreground hover:text-purple-400 transition-colors">
@@ -69,15 +69,17 @@ export default function Header() {
         <div className="md:hidden mt-4 pb-4 border-t-2 border-foreground">
           <nav className="flex flex-col space-y-4 pt-4">
             <a
-              href="#docs"
-              className="font-semibold text-foreground hover:text-purple-400 transition-colors">
+              href="/docs"
+              className="font-semibold text-black hover:text-purple-400 transition-colors">
               Docs
             </a>
             <a
-              href="#github"
-              className="font-semibold text-foreground hover:text-purple-400 transition-colors">
+              href="/github"
+              className="font-semibold text-black hover:text-purple-400 transition-colors">
+
               GitHub
             </a>
+
             <Link
               href="/features"
               className="font-semibold text-foreground hover:text-purple-400 transition-colors">
