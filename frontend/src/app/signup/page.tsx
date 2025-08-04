@@ -3,9 +3,9 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../AuthContext';
-import Toast from '../../components/Toast';
 import ProtectedRoute from '../../components/ProtectedRoute';
 import zxcvbn from 'zxcvbn';
+import { toast } from 'sonner';
 
 const accent = '#b39ddb'; // pastel purple
 const accentGreen = '#39ff14'; // neon green
@@ -25,11 +25,6 @@ function SignupPageContent() {
     name?: string;
   }>({});
   const [loading, setLoading] = useState(false);
-  const [toast, setToast] = useState<{
-    message: string;
-    type: 'success' | 'error';
-    isVisible: boolean;
-  }>({ message: '', type: 'success', isVisible: false });
 
   function validate() {
     const errs: typeof errors = {};
@@ -48,21 +43,13 @@ function SignupPageContent() {
     setLoading(true);
     try {
       await signup(form);
-      setToast({
-        message: 'Account created successfully!',
-        type: 'success',
-        isVisible: true,
-      });
+      toast.success('Account created successfully!',)
       setTimeout(() => {
         router.push('/chat');
       }, 1500);
     } catch (err: any) {
       setErrors({ email: err.message || 'Signup failed' });
-      setToast({
-        message: err.message || 'Signup failed. Please try again.',
-        type: 'error',
-        isVisible: true,
-      });
+      toast.error(err.message || 'Signup failed. Please try again.')
     } finally {
       setLoading(false);
     }
@@ -70,12 +57,6 @@ function SignupPageContent() {
   
   return (
     <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#b39ddb]/40 via-white to-[#39ff14]/20 relative overflow-hidden">
-      <Toast
-        message={toast.message}
-        type={toast.type}
-        isVisible={toast.isVisible}
-        onClose={() => setToast((prev) => ({ ...prev, isVisible: false }))}
-      />
       {/* Floating accent shape */}
       <div className="absolute -top-10 -left-10 w-40 h-40 bg-[#b39ddb] border-2 border-black rotate-12 opacity-60 z-0"></div>
       <form
