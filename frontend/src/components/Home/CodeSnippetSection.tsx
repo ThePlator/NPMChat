@@ -17,12 +17,13 @@ export default function CodeSnippetSection() {
         <a
           href="https://github.com/ThePlator/NPMChat"
           target="_blank"
-          rel="noopener noreferrer">
+          rel="noopener noreferrer"
+        >
           <button className="bg-[#e9d5ff] hover:bg-[#d8b4fe] border-4 border-black px-8 py-4 text-lg font-bold brutal-shadow text-black">
             View & Contribute on GitHub
           </button>
         </a>
       </div>
     </section>
-  );
+  )
 }

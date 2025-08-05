@@ -1,5 +1,5 @@
-import { Github } from 'lucide-react';
-import Link from 'next/link';
+import { Github } from "lucide-react"
+import Link from "next/link"
 
 export default function Footer() {
   return (
@@ -14,11 +14,9 @@ export default function Footer() {
         {/* Social Links */}
         <div className="flex items-center space-x-6">
           <a
-
             href="https://github.com/ThePlator/NPMChat"
-            className="flex items-center space-x-2 font-semibold text-black hover:text-purple-400 border-2 border-black px-3 py-1 rounded-sm brutal-shadow">
-
-
+            className="flex items-center space-x-2 font-semibold text-black hover:text-purple-400 border-2 border-black px-3 py-1 rounded-sm brutal-shadow"
+          >
             <Github className="w-4 h-4" />
             <span>View Source on GitHub</span>
           </a>
@@ -30,7 +28,6 @@ export default function Footer() {
           </Link>
           <span>|</span>
 
-
           <Link href="/terms" className="hover:underline">
             Terms
           </Link>
@@ -41,5 +38,5 @@ export default function Footer() {
         </div>
       </div>
     </footer>
-  );
+  )
 }

@@ -1,8 +1,8 @@
-import Link from 'next/link';
+import Link from "next/link"
 
 export default function Hero() {
-  const accent = '#b39ddb'; // pastel purple
-  const accentGreen = '#39ff14'; // neon green
+  const accent = "#b39ddb" // pastel purple
+  const accentGreen = "#39ff14" // neon green
   return (
     <section className="w-full bg-background py-20 px-6">
       <div className="max-w-7xl mx-auto">
@@ -12,10 +12,11 @@ export default function Hero() {
             <div className="space-y-4">
               <h1
                 className="text-5xl md:text-7xl font-black leading-tight text-primary"
-                style={{ letterSpacing: -2 }}>
+                style={{ letterSpacing: -2 }}
+              >
                 Chat. Collaborate. Ship code.
                 <br />
-                <span style={{ color: accentGreen }}>Welcome to</span>{' '}
+                <span style={{ color: accentGreen }}>Welcome to</span>{" "}
                 <span style={{ color: accent }}>NPMChat</span>
                 <span className="block text-2xl md:text-3xl font-bold mt-4 text-primary">
                   — the neo-brutalist chat for devs.
@@ -101,5 +102,5 @@ export default function Hero() {
         </div>
       </div>
     </section>
-  );
+  )
 }

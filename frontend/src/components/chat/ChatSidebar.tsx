@@ -1,5 +1,5 @@
-'use client';
-import React from 'react';
+"use client"
+import React from "react"
 
 export default function ChatSidebar({
   users,
@@ -10,15 +10,15 @@ export default function ChatSidebar({
   search,
   setSearch,
 }: {
-  users: any[];
-  selectedUser: any;
-  onUserSelect: (user: any) => void;
-  onProfile: () => void;
-  onLogout: () => void;
-  search: string;
-  setSearch: (s: string) => void;
+  users: any[]
+  selectedUser: any
+  onUserSelect: (user: any) => void
+  onProfile: () => void
+  onLogout: () => void
+  search: string
+  setSearch: (s: string) => void
 }) {
-  console.log('users', users);
+  console.log("users", users)
   return (
     <aside className="flex flex-col w-full md:w-80 bg-[#e9d5ff] dark:bg-background border-r-2 border-sidebar-border  h-full">
       {/* Logo */}
@@ -49,10 +49,11 @@ export default function ChatSidebar({
             className={`flex items-center gap-3 px-4 py-3 cursor-pointer rounded-lg transition-all duration-100 select-none
               ${
                 selectedUser.id === user.id
-                  ? 'bg-sidebar shadow border border-[#39ff14]'
-                  : 'hover:bg-[#f3e8ff]'
+                  ? "bg-sidebar shadow border border-[#39ff14]"
+                  : "hover:bg-[#f3e8ff]"
               }
-            `}>
+            `}
+          >
             <div className="w-10 h-10 rounded-full bg-[#39ff14] flex items-center justify-center text-xl font-extrabold border-2 border-sidebar-border ">
               {user.avatarUrl ? (
                 <img
@@ -69,8 +70,9 @@ export default function ChatSidebar({
               <div className="flex items-center gap-1 text-xs">
                 <span
                   className={`w-2 h-2 rounded-full border-2 border-black ${
-                    user.status === 'online' ? 'bg-[#39ff14]' : 'bg-gray-400'
-                  }`}></span>
+                    user.status === "online" ? "bg-[#39ff14]" : "bg-gray-400"
+                  }`}
+                ></span>
                 <span className="text-gray-600">{user.status}</span>
               </div>
             </div>
@@ -86,15 +88,17 @@ export default function ChatSidebar({
       <div className="flex flex-col gap-2 p-4 border-t-2 border-sidebar-border ">
         <button
           onClick={onProfile}
-          className="w-full py-2 rounded-lg border-2 border-sidebar-border  bg-sidebar-accent text-primary font-bold hover:bg-[#b39ddb]">
+          className="w-full py-2 rounded-lg border-2 border-sidebar-border  bg-sidebar-accent text-primary font-bold hover:bg-[#b39ddb]"
+        >
           Profile
         </button>
         <button
           onClick={onLogout}
-          className="w-full py-2 rounded-lg border-2 border-sidebar-border  bg-sidebar-accent text-primary font-bold hover:bg-red-500 hover:text-white">
+          className="w-full py-2 rounded-lg border-2 border-sidebar-border  bg-sidebar-accent text-primary font-bold hover:bg-red-500 hover:text-white"
+        >
           Logout
         </button>
       </div>
     </aside>
-  );
+  )
 }

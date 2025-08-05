@@ -1,25 +1,25 @@
-import React from 'react';
+import React from "react"
 
 const testimonials = [
   {
-    name: 'Open Source Enthusiast',
-    quote: 'Love how easy it is to contribute and learn from others!',
-    avatarType: 'ellipse28',
+    name: "Open Source Enthusiast",
+    quote: "Love how easy it is to contribute and learn from others!",
+    avatarType: "ellipse28",
   },
   {
-    name: 'First-Time Contributor',
-    quote: 'My first PR was merged! Great community and support.',
-    avatarType: 'ellipse30',
+    name: "First-Time Contributor",
+    quote: "My first PR was merged! Great community and support.",
+    avatarType: "ellipse30",
   },
   {
-    name: 'Future Collaborator',
-    quote: 'Excited to build, share, and grow together in this project.',
-    avatarType: 'ellipse32',
+    name: "Future Collaborator",
+    quote: "Excited to build, share, and grow together in this project.",
+    avatarType: "ellipse32",
   },
-];
+]
 
 function SketchAvatar({ type }: { type: string }) {
-  if (type === 'ellipse28') {
+  if (type === "ellipse28") {
     return (
       <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
         <circle
@@ -41,9 +41,9 @@ function SketchAvatar({ type }: { type: string }) {
         <circle cx="18" cy="22" r="2" fill="black" />
         <circle cx="30" cy="22" r="2" fill="black" />
       </svg>
-    );
+    )
   }
-  if (type === 'ellipse30') {
+  if (type === "ellipse30") {
     return (
       <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
         <circle
@@ -65,7 +65,7 @@ function SketchAvatar({ type }: { type: string }) {
         <circle cx="18" cy="22" r="2" fill="black" />
         <circle cx="30" cy="22" r="2" fill="black" />
       </svg>
-    );
+    )
   }
   return (
     <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
@@ -81,7 +81,7 @@ function SketchAvatar({ type }: { type: string }) {
       <circle cx="18" cy="22" r="2" fill="black" />
       <circle cx="30" cy="22" r="2" fill="black" />
     </svg>
-  );
+  )
 }
 
 export default function TestimonialsSection() {
@@ -95,7 +95,8 @@ export default function TestimonialsSection() {
           {testimonials.map((t) => (
             <div
               key={t.name}
-              className="flex flex-col items-center p-8 border-4 border-black rounded-sm brutal-shadow bg-[#e9d5ff]">
+              className="flex flex-col items-center p-8 border-4 border-black rounded-sm brutal-shadow bg-[#e9d5ff]"
+            >
               <div className="mb-4">
                 <SketchAvatar type={t.avatarType} />
               </div>
@@ -108,5 +109,5 @@ export default function TestimonialsSection() {
         </div>
       </div>
     </section>
-  );
+  )
 }
