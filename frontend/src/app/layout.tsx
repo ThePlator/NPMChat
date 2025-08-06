@@ -1,7 +1,8 @@
 import './globals.css'
 import type { Metadata } from 'next'
 import { AuthProvider } from './AuthContext'
-import { ThemeProvider } from "@/components/theme-provider"
+import { ThemeProvider } from '@/components/theme-provider'
+import { Toaster } from '@/components/ui/sonner'
 
 export const metadata: Metadata = {
 	title: 'NPMChat',
@@ -23,6 +24,7 @@ export default function RootLayout({
 					disableTransitionOnChange
 				>
 					<AuthProvider>{children}</AuthProvider>
+					<Toaster richColors />
 				</ThemeProvider>
 			</body>
 		</html>
