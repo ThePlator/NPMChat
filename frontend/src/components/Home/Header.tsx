@@ -18,7 +18,7 @@ export default function Header() {
 	}, [])
 
 	return (
-		<header className='w-full bg-background border-b-4 border-primary px-6 py-4'>
+		<header className='sticky top-0 z-50 w-full bg-background border-b-4 border-primary px-6 py-4'>
 			<div className='max-w-7xl mx-auto flex items-center justify-between'>
 				{/* Logo */}
 				<div className='flex items-center space-x-2'>
