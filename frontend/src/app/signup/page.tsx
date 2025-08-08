@@ -6,6 +6,7 @@ import { useAuth } from "../AuthContext"
 import ProtectedRoute from "../../components/ProtectedRoute"
 import zxcvbn from "zxcvbn"
 import { toast } from "sonner"
+import { Eye, EyeOff } from "lucide-react"
 
 const accent = "#b39ddb" // pastel purple
 const accentGreen = "#39ff14" // neon green
@@ -25,6 +26,7 @@ function SignupPageContent() {
     name?: string
   }>({})
   const [loading, setLoading] = useState(false)
+  const [hidePassword, setHidePassword] = useState(false)
 
   function validate() {
     const errs: typeof errors = {}
@@ -100,23 +102,34 @@ function SignupPageContent() {
             </span>
           )}
         </label>
-        <label className="flex flex-col gap-1 text-black font-bold text-lg">
+        <label className="flex flex-col gap-1 text-black font-bold text-lg relative">
           Password
-          <input
-            className="border-2 border-black px-4 py-2 text-lg bg-[#eaffea] focus:bg-[#39ff14]/40 focus:outline-none focus:border-[${accentGreen}] transition-all cursor-[url('/custom-cursor-arrow.svg'),_pointer]"
-            type="password"
-            value={form.password}
-            onChange={(e) => {
-              const password = e.target.value
-              setForm((f) => ({ ...f, password }))
-              const result = zxcvbn(password)
-              setPasswordStrength({
-                score: result.score,
-                feedback: result.feedback.suggestions[0] || "",
-              })
-            }}
-            autoComplete="new-password"
-          />
+          <div className="relative w-full">
+            <input
+              className="border-2 border-black px-4 py-2 text-lg bg-[#eaffea] focus:bg-[#39ff14]/40 focus:outline-none focus:border-[${accentGreen}] transition-all cursor-[url('/custom-cursor-arrow.svg'),_pointer] w-full pr-10"
+              type={hidePassword ? "password" : "text"}
+              value={form.password}
+              onChange={(e) => {
+                const password = e.target.value
+                setForm((f) => ({ ...f, password }))
+                const result = zxcvbn(password)
+                setPasswordStrength({
+                  score: result.score,
+                  feedback: result.feedback.suggestions[0] || "",
+                })
+              }}
+              autoComplete="new-password"
+            />
+
+            <button
+              type="button"
+              onClick={() => setHidePassword(!hidePassword)}
+              className="absolute inset-y-0  right-0 pr-3 flex items-center"
+              aria-label={hidePassword ? "Show password" : "Hide password"}
+            >
+              {hidePassword ? <EyeOff /> : <Eye />}
+            </button>
+          </div>
           {form.password && (
             <div className="mt-1 text-sm font-bold">
               <div

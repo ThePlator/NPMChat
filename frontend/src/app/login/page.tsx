@@ -3,6 +3,7 @@ import React, { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useAuth } from "../AuthContext"
+import { Eye, EyeOff } from "lucide-react"
 
 import ProtectedRoute from "../../components/ProtectedRoute"
 import { toast } from "sonner"
@@ -18,6 +19,7 @@ function LoginPageContent() {
     {},
   )
   const [loading, setLoading] = useState(false)
+  const [hidePassword, setHidePassword] = useState(true)
 
   function validate() {
     const errs: typeof errors = {}
@@ -77,17 +79,27 @@ function LoginPageContent() {
             </span>
           )}
         </label>
-        <label className="flex flex-col gap-1 text-black font-bold text-lg">
+        <label className="flex flex-col gap-1 text-black font-bold text-lg relative">
           Password
-          <input
-            className="border-2 border-black px-4 py-2 text-lg bg-[#eaffea] focus:bg-[#39ff14]/40 focus:outline-none focus:border-[${accentGreen}] transition-all cursor-[url('/custom-cursor-arrow.svg'),_pointer]"
-            type="password"
-            value={form.password}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, password: e.target.value }))
-            }
-            autoComplete="current-password"
-          />
+          <div className="relative w-full">
+            <input
+              className="border-2 border-black px-4 py-2 text-lg bg-[#eaffea] focus:bg-[#39ff14]/40 focus:outline-none focus:border-[${accentGreen}] transition-all cursor-[url('/custom-cursor-arrow.svg'),_pointer] w-full pr-10"
+              type={hidePassword ? "password" : "text"}
+              value={form.password}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, password: e.target.value }))
+              }
+              autoComplete="current-password"
+            />
+            <button
+              type="button"
+              onClick={() => setHidePassword(!hidePassword)}
+              className="absolute inset-y-0  right-0 pr-3 flex items-center"
+              aria-label={hidePassword ? "Show password" : "Hide password"}
+            >
+              {hidePassword ? <EyeOff /> : <Eye />}
+            </button>
+          </div>
           {errors.password && (
             <span className="text-red-600 text-sm font-normal">
               {errors.password}
