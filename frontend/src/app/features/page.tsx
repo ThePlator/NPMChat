@@ -1,5 +1,5 @@
-import FeaturesPage from '../../components/Features/FeaturesPage';
+import FeaturesPage from "../../components/Features/FeaturesPage"
 
 export default function Features() {
-  return <FeaturesPage />;
+  return <FeaturesPage />
 }

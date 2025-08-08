@@ -1,0 +1,34 @@
+# Build outputs
+build/
+dist/
+public/build/
+
+# Node dependencies
+node_modules/
+
+# Coverage reports
+coverage/
+
+# Environment files (optional)
+.env
+.env.* 
+
+# Logs
+*.log
+
+# GitHub workflows or configs
+.github/
+
+# Lock files (optional)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Docs or Markdown
+**/*.md
+
+# JSON files you don’t want to format
+*.json
+
+# Prettier ignore itself (to avoid recursion bugs)
+.prettierignore

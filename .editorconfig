@@ -1,0 +1,37 @@
+# .editorconfig
+# This file helps maintain consistent coding styles across different editors and IDEs.
+# Most modern editors support EditorConfig natively or via plugins.
+
+# Indicates this is the root EditorConfig file (don't look for config files in parent folders)
+root = true
+
+# Applies to all files
+[*]
+# Use spaces instead of tabs for indentation
+indent_style = space
+
+# Set indentation size to 2 spaces (common in JS, TS, and React projects)
+indent_size = 2
+
+# Use Unix-style line endings (LF). Avoids issues across OS (Windows uses CRLF)
+end_of_line = lf
+
+# Set character encoding to UTF-8
+charset = utf-8
+
+# Remove any whitespace characters at the end of lines
+trim_trailing_whitespace = true
+
+# Ensure every file ends with a newline (helps with diffs and POSIX compliance)
+insert_final_newline = true
+
+# Override settings for Markdown files
+[*.md]
+# Don't trim trailing whitespace in Markdown files
+# Some markdown formatting (e.g. for line breaks) relies on trailing spaces
+trim_trailing_whitespace = false
+
+# Override settings for JSON files
+[*.json]
+# JSON should also use 2 spaces (enforced for readability)
+indent_size = 2

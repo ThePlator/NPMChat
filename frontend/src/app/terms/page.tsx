@@ -122,93 +122,131 @@ export default function TermsPage() {
 
       <main className="terms-container">
         <h1>Terms of Service</h1>
-        <p><strong>Last Updated:</strong> July 31, 2025</p>
+        <p>
+          <strong>Last Updated:</strong> July 31, 2025
+        </p>
 
         <p>
-          Welcome to NPMChat! These Terms of Service ("Terms") govern your access to and use of the NPMChat website,
-          applications, and services (collectively, the "Service"). By accessing or using the Service, you agree to be
-          bound by these Terms and our Privacy Policy. If you do not agree to these Terms, do not use our Service.
+          Welcome to NPMChat! These Terms of Service ("Terms") govern your
+          access to and use of the NPMChat website, applications, and services
+          (collectively, the "Service"). By accessing or using the Service, you
+          agree to be bound by these Terms and our Privacy Policy. If you do not
+          agree to these Terms, do not use our Service.
         </p>
 
         <h2>1. Acceptance of Terms</h2>
-        <p>By creating an account, accessing, or using the Service, you confirm your agreement to be bound by these Terms.</p>
         <p>
-          We may update these Terms from time to time. We will notify you of any material changes by posting the new Terms
-          on the Service or by sending you an email. Your continued use of the Service after such changes constitutes your
-          acceptance of the new Terms.
+          By creating an account, accessing, or using the Service, you confirm
+          your agreement to be bound by these Terms.
+        </p>
+        <p>
+          We may update these Terms from time to time. We will notify you of any
+          material changes by posting the new Terms on the Service or by sending
+          you an email. Your continued use of the Service after such changes
+          constitutes your acceptance of the new Terms.
         </p>
 
         <h2>2. Eligibility and User Accounts</h2>
         <p>You must be at least 13 years old to use the Service.</p>
         <p>
-          You are responsible for maintaining the confidentiality of your account password and for all activities that
-          occur under your account. You agree to notify us immediately of any unauthorized use of your password or account.
+          You are responsible for maintaining the confidentiality of your
+          account password and for all activities that occur under your account.
+          You agree to notify us immediately of any unauthorized use of your
+          password or account.
         </p>
         <p>You must provide accurate and complete registration information.</p>
 
         <h2>3. Your Content and Conduct</h2>
         <p>
-          <strong>Definition of Content:</strong> "Content" refers to any data, text, files, information, usernames,
-          profiles, audio, photos, graphics, images, video, code, or other materials that you post, upload, publish,
-          display, link to, or otherwise make available on the Service.
+          <strong>Definition of Content:</strong> "Content" refers to any data,
+          text, files, information, usernames, profiles, audio, photos,
+          graphics, images, video, code, or other materials that you post,
+          upload, publish, display, link to, or otherwise make available on the
+          Service.
         </p>
-        <p><strong>Responsibility for Content:</strong> You are solely responsible for the Content you create, upload, post, or share on NPMChat.</p>
         <p>
-          <strong>Prohibited Conduct and Content:</strong> You agree not to post or share any content that is unlawful,
-          harmful, abusive, infringes on rights, spreads malware, spams others, impersonates anyone, shares private info
-          without consent, or promotes illegal activity.
+          <strong>Responsibility for Content:</strong> You are solely
+          responsible for the Content you create, upload, post, or share on
+          NPMChat.
         </p>
-        <p><strong>Regarding Code:</strong> Do not share or run malicious code or misuse the platform’s code features.</p>
-        <p><strong>Our Right to Monitor:</strong> We may monitor and remove content at our discretion.</p>
+        <p>
+          <strong>Prohibited Conduct and Content:</strong> You agree not to post
+          or share any content that is unlawful, harmful, abusive, infringes on
+          rights, spreads malware, spams others, impersonates anyone, shares
+          private info without consent, or promotes illegal activity.
+        </p>
+        <p>
+          <strong>Regarding Code:</strong> Do not share or run malicious code or
+          misuse the platform’s code features.
+        </p>
+        <p>
+          <strong>Our Right to Monitor:</strong> We may monitor and remove
+          content at our discretion.
+        </p>
 
         <h2>4. Licenses to Your Content</h2>
         <p>
-          By submitting Content, you grant NPMChat a worldwide, non-exclusive, royalty-free, transferable, sublicensable
-          license to use and distribute it for the purpose of operating and improving the Service.
+          By submitting Content, you grant NPMChat a worldwide, non-exclusive,
+          royalty-free, transferable, sublicensable license to use and
+          distribute it for the purpose of operating and improving the Service.
         </p>
 
         <h2>5. Intellectual Property</h2>
-        <p>All rights, title, and interest in the Service (excluding user Content) belong to NPMChat and its licensors. You may not use our branding without permission.</p>
+        <p>
+          All rights, title, and interest in the Service (excluding user
+          Content) belong to NPMChat and its licensors. You may not use our
+          branding without permission.
+        </p>
 
         <h2>6. Code Execution and Collaborative Tools</h2>
         <p>
-          Collaborative coding and file sharing are for learning and dev purposes only. Don’t misuse code execution features
-          or attempt unauthorized access.
+          Collaborative coding and file sharing are for learning and dev
+          purposes only. Don’t misuse code execution features or attempt
+          unauthorized access.
         </p>
 
         <h2>7. Third-Party Links and Services</h2>
-        <p>We may link to third-party sites. We’re not responsible for their content or policies.</p>
+        <p>
+          We may link to third-party sites. We’re not responsible for their
+          content or policies.
+        </p>
 
         <h2>8. Termination</h2>
         <p>
-          We may suspend or terminate your account for any reason, especially for violating these Terms. You may also delete
-          your account at any time.
+          We may suspend or terminate your account for any reason, especially
+          for violating these Terms. You may also delete your account at any
+          time.
         </p>
 
         <h2>9. Disclaimers and Limitation of Liability</h2>
         <p>
-          The Service is provided “as is.” We are not liable for indirect damages, including data loss or inability to access
-          the Service.
+          The Service is provided “as is.” We are not liable for indirect
+          damages, including data loss or inability to access the Service.
         </p>
 
         <h2>10. Governing Law</h2>
-        <p>These Terms are governed by the laws of your country/state (e.g., India or United States).</p>
+        <p>
+          These Terms are governed by the laws of your country/state (e.g.,
+          India or United States).
+        </p>
 
         <h2>11. Severability</h2>
-        <p>If any part of the Terms is held invalid, the rest remain effective.</p>
+        <p>
+          If any part of the Terms is held invalid, the rest remain effective.
+        </p>
 
         <h2>12. Entire Agreement</h2>
-        <p>These Terms replace any prior agreements between us about the Service.</p>
+        <p>
+          These Terms replace any prior agreements between us about the Service.
+        </p>
 
         <h2>13. Contact Us</h2>
         <p>
-          If you have questions, contact us at{' '}
-          <a href="mailto:support@npmchat.com">
-            support@npmchat.com
-          </a>{' '}
-          or via our Contact page.
+          If you have questions, contact us at{" "}
+          <a href="mailto:support@npmchat.com">support@npmchat.com</a> or via
+          our Contact page.
         </p>
       </main>
     </>
-  );
+  )
 }

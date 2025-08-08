@@ -1,31 +1,31 @@
-'use client';
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '../app/AuthContext';
+"use client"
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { useAuth } from "../app/AuthContext"
 
 interface ProtectedRouteProps {
-  children: React.ReactNode;
-  requireAuth?: boolean; // true = requires auth, false = requires no auth
+  children: React.ReactNode
+  requireAuth?: boolean // true = requires auth, false = requires no auth
 }
 
 export default function ProtectedRoute({
   children,
   requireAuth = false,
 }: ProtectedRouteProps) {
-  const { user, loading } = useAuth();
-  const router = useRouter();
+  const { user, loading } = useAuth()
+  const router = useRouter()
 
   useEffect(() => {
     if (!loading) {
       if (requireAuth && !user) {
         // User needs to be authenticated but isn't
-        router.push('/login');
+        router.push("/login")
       } else if (!requireAuth && user) {
         // User is authenticated but shouldn't be on this page (login/signup)
-        router.push('/chat');
+        router.push("/chat")
       }
     }
-  }, [user, loading, requireAuth, router]);
+  }, [user, loading, requireAuth, router])
 
   // Show loading spinner while checking auth status
   if (loading) {
@@ -38,17 +38,17 @@ export default function ProtectedRoute({
           </div>
         </div>
       </div>
-    );
+    )
   }
 
   // Don't render children if user should be redirected
   if (requireAuth && !user) {
-    return null; // Will redirect to login
+    return null // Will redirect to login
   }
 
   if (!requireAuth && user) {
-    return null; // Will redirect to chat
+    return null // Will redirect to chat
   }
 
-  return <>{children}</>;
+  return <>{children}</>
 }
