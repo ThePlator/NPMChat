@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { AuthProvider } from "./AuthContext"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
+import SmoothScroll from "@/components/SmoothScroll" // Import the new component
 
 export const metadata: Metadata = {
   title: "NPMChat",
@@ -17,6 +18,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
+        <SmoothScroll />
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
