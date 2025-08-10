@@ -56,6 +56,13 @@ const ChatPanels: React.FC<{ currentUser: any }> = ({ currentUser }) => {
       unread: unseenMessages[u._id || u.id] || 0,
     }))
 
+  const currentSelectedUser = selectedUser
+    ? users.find(
+        (user: any) =>
+          (user._id || user.id) === (selectedUser._id || selectedUser.id),
+      ) || selectedUser
+    : null
+
   return (
     <div className="flex flex-col md:flex-row h-screen w-screen font-sans bg-gradient-to-br from-[#b39ddb]/40 via-white to-[#39ff14]/20 text-black relative overflow-hidden">
       {/* Sidebar */}
@@ -66,7 +73,7 @@ const ChatPanels: React.FC<{ currentUser: any }> = ({ currentUser }) => {
       >
         <ChatSidebar
           users={filteredUsers}
-          selectedUser={selectedUser || {}}
+          selectedUser={currentSelectedUser || {}}
           onUserSelect={handleUserClick}
           onProfile={() => {
             setProfileDraft({
@@ -90,7 +97,7 @@ const ChatPanels: React.FC<{ currentUser: any }> = ({ currentUser }) => {
           mobileView === "sidebar" ? "hidden md:flex" : ""
         }`}
       >
-        <ChatPanel selectedUser={selectedUser} onBack={handleBack} />
+        <ChatPanel selectedUser={currentSelectedUser} onBack={handleBack} />
         {loadingMessages && (
           <div className="p-4 text-center">Loading messages...</div>
         )}

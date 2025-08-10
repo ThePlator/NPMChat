@@ -206,8 +206,16 @@ export default function ChatPanel({
             >
               {selectedUser && selectedUser.name ? selectedUser.name : "User"}
             </span>
-            <span className="text-xs font-bold text-[#39ff14]">
-              {selectedUser && selectedUser.status ? selectedUser.status : ""}
+            <span
+              className={`text-sm font-bold ${
+                selectedUser && selectedUser.status === "online"
+                  ? "text-[#39ff14]"
+                  : "text-gray-400"
+              }`}
+            >
+              {selectedUser && selectedUser.status === "online"
+                ? "online"
+                : "offline"}
             </span>
           </div>
           <ModeToggle />
