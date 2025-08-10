@@ -22,6 +22,7 @@ export const MessageProvider = ({
   currentUser: any
 }) => {
   const [users, setUsers] = useState<any[]>([])
+  const [onlineUsers, setOnlineUsers] = useState<string[]>([])
   const [unseenMessages, setUnseenMessages] = useState<Record<string, number>>(
     {},
   )
@@ -46,6 +47,24 @@ export const MessageProvider = ({
     }
   }, [currentUser])
 
+  // helper to update the online statuses
+  const applyOnlineStatus = useCallback(
+    (usersList: any[], onlineIds: string[]) => {
+      return usersList.map((user) => {
+        const userId = (user._id || user.id)?.toString()
+        const isOnline = onlineIds.some(
+          (onlineId) => onlineId.toString() === userId,
+        )
+
+        return {
+          ...user,
+          status: isOnline ? "online" : "offline",
+        }
+      })
+    },
+    [],
+  )
+
   // Fetch users for sidebar
   const fetchUsers = useCallback(() => {
     if (!currentUser) return
@@ -54,12 +73,13 @@ export const MessageProvider = ({
       .get("/")
       .then((data) => {
         // API returns { users: [...], unseenMessages: { ... } }
-        setUsers(data.users)
+        const usersWithStatus = applyOnlineStatus(data.users, onlineUsers)
+        setUsers(usersWithStatus)
         setUnseenMessages(data.unseenMessages || {})
       })
       .catch((err) => setError(err.message || "Failed to load users"))
       .finally(() => setLoadingUsers(false))
-  }, [currentUser])
+  }, [currentUser, onlineUsers, applyOnlineStatus])
 
   useEffect(() => {
     fetchUsers()
@@ -190,20 +210,20 @@ export const MessageProvider = ({
   useEffect(() => {
     if (!socket) return
     const handleGetOnlineUsers = (onlineUserIds: string[]) => {
-      setUsers((prevUsers: any[]) =>
-        prevUsers.map((u) => {
-          const id = u._id || u.id
-          return onlineUserIds.includes(id)
-            ? { ...u, status: "online" }
-            : { ...u, status: "offline" }
-        }),
-      )
+      setOnlineUsers(onlineUserIds)
+      setUsers((prevUsers: any[]) => {
+        if (prevUsers.length === 0) {
+          console.log("No users loaded yet")
+          return prevUsers
+        }
+        return applyOnlineStatus(prevUsers, onlineUserIds)
+      })
     }
     socket.on("getOnlineUsers", handleGetOnlineUsers)
     return () => {
       socket.off("getOnlineUsers", handleGetOnlineUsers)
     }
-  }, [socket])
+  }, [socket, applyOnlineStatus])
 
   // Automatically select the first user if none is selected and users are loaded
   useEffect(() => {
