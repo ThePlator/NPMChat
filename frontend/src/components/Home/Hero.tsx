@@ -1,8 +1,8 @@
-import Link from 'next/link';
+import Link from "next/link"
 
 export default function Hero() {
-  const accent = '#b39ddb'; // pastel purple
-  const accentGreen = '#39ff14'; // neon green
+  const accent = "#b39ddb" // pastel purple
+  const accentGreen = "#39ff14" // neon green
   return (
     <section className="w-full bg-background py-20 px-6">
       <div className="max-w-7xl mx-auto">
@@ -12,21 +12,18 @@ export default function Hero() {
             <div className="space-y-4">
               <h1
                 className="text-5xl md:text-7xl font-black leading-tight text-primary hover:scale-105 transition-transform duration-300 cursor-default"
-                style={{ letterSpacing: -2 }}>
+                style={{ letterSpacing: -2 }}
+              >
                 Chat. Collaborate. Ship code.
                 <br />
-                <span 
+                <span
                   style={{ color: accentGreen }}
                   className="hover:animate-pulse"
                 >
                   Welcome to
                 </span>
                 <br />
-                <span 
-                  style={{ color: accent }}
-                >
-                  NPMChat
-                </span>
+                <span style={{ color: accent }}>NPMChat</span>
                 <span className="block text-2xl md:text-3xl font-bold mt-4 text-primary hover:text-opacity-80 transition-all duration-300">
                   — the neo-brutalist chat for devs.
                 </span>
@@ -68,9 +65,15 @@ export default function Hero() {
                     </span>
                   </div>
                   <div className="space-y-1">
-                    <div className="hover:text-white transition-colors duration-300">$ npm run dev</div>
-                    <div className="text-[#b39ddb] hover:text-[#39ff14] transition-colors duration-300">✓ Local server started</div>
-                    <div className="text-[#b39ddb] hover:text-[#39ff14] transition-colors duration-300">💬 Ready to chat!</div>
+                    <div className="hover:text-white transition-colors duration-300">
+                      $ npm run dev
+                    </div>
+                    <div className="text-[#b39ddb] hover:text-[#39ff14] transition-colors duration-300">
+                      ✓ Local server started
+                    </div>
+                    <div className="text-[#b39ddb] hover:text-[#39ff14] transition-colors duration-300">
+                      💬 Ready to chat!
+                    </div>
                   </div>
                 </div>
                 {/* Chat Window */}
@@ -94,7 +97,9 @@ export default function Hero() {
                         B
                       </div>
                       <div className="flex-1">
-                        <div className="text-xs font-bold text-black hover:text-[#39ff14] transition-colors duration-300">Bob</div>
+                        <div className="text-xs font-bold text-black hover:text-[#39ff14] transition-colors duration-300">
+                          Bob
+                        </div>
                         <div className="text-sm text-black hover:text-gray-600 transition-colors duration-300">
                           Looks cool! Is this your side project?
                         </div>
@@ -111,5 +116,5 @@ export default function Hero() {
         </div>
       </div>
     </section>
-  );
+  )
 }
