@@ -17,18 +17,20 @@ export default function Header() {
       .catch((err) => console.error("Failed to fetch stars", err))
   }, [])
 
-  return (
-    <header className="w-full bg-background border-b-4 border-primary px-6 py-4">
-      <div className="max-w-7xl mx-auto flex items-center justify-between">
-        {/* Logo */}
-        <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-primary rounded-sm flex items-center justify-center">
-            <span className="text-background font-bold text-sm">N</span>
-          </div>
-          <span className="font-bold text-2xl tracking-tight text-primary">
-            NPMChat
-          </span>
-        </div>
+	return (
+		<header className='sticky top-0 z-50 w-full bg-background border-b-4 border-primary px-6 py-4'>
+			<div className='max-w-7xl mx-auto flex items-center justify-between'>
+				{/* Logo */}
+				<div className='flex items-center space-x-2'>
+					<div className='w-8 h-8 bg-primary rounded-sm flex items-center justify-center'>
+						<span className='text-background font-bold text-sm'>
+							N
+						</span>
+					</div>
+					<span className='font-bold text-2xl tracking-tight text-primary'>
+						NPMChat
+					</span>
+				</div>
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-8">
