@@ -10,12 +10,16 @@ export default function LicensePage() {
   return (
     <div className="min-h-screen flex flex-col">
       <main className="flex-grow container mx-auto px-4 py-12 max-w-4xl">
-        <div className="bg-white p-8 rounded-lg shadow-lg border-2 border-black">
-          <h1 className="text-4xl font-bold mb-6 text-center">MIT License</h1>
+        <div className="bg-white dark:bg-zinc-900 p-8 rounded-lg shadow-lg border-2 border-black dark:border-zinc-700">
+          <h1 className="text-4xl font-bold mb-6 text-center text-black dark:text-white">
+            MIT License
+          </h1>
 
           <div className="mb-8">
-            <p className="mb-4">Copyright (c) 2025 NPMChat</p>
-            <p className="mb-4">
+            <p className="mb-4 text-black dark:text-zinc-200">
+              Copyright (c) 2025 NPMChat
+            </p>
+            <p className="mb-4 text-black dark:text-zinc-200">
               Permission is hereby granted, free of charge, to any person
               obtaining a copy of this software and associated documentation
               files (the "Software"), to deal in the Software without
@@ -41,18 +45,20 @@ export default function LicensePage() {
           </div>
 
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold mb-4">Attribution</h2>
-            <p className="mb-4">
+            <h2 className="text-2xl font-semibold mb-4 text-black dark:text-white">
+              Attribution
+            </h2>
+            <p className="mb-4 text-black dark:text-zinc-200">
               This project uses the following open source software and
               resources:
             </p>
-            <ul className="list-disc pl-6 space-y-2">
+            <ul className="list-disc pl-6 space-y-2 text-black dark:text-zinc-200">
               <li>
                 <a
                   href="https://nextjs.org/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline"
+                  className="text-blue-600 dark:text-blue-400 hover:underline"
                 >
                   Next.js
                 </a>{" "}
