@@ -1,5 +1,5 @@
 <!-- markdownlint-disable MD033 -->
-# CodeChat
+# NPMChat
 
 <h3 style="text-align: center; font-weight: normal;">
   Real-Time Chat & Code Collaboration for Developers
