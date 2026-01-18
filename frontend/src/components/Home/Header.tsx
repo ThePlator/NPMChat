@@ -1,6 +1,6 @@
 "use client"
 
-import { Search, Heart, Menu, X, Star } from "lucide-react"
+import { Search, Heart, Menu, X, Star, Github, FileText, Zap, Home } from "lucide-react"
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { ModeToggle } from "../ui/mode-toggle"
@@ -16,6 +16,20 @@ export default function Header() {
       .then((data) => setStars(data.stargazers_count))
       .catch((err) => console.error("Failed to fetch stars", err))
   }, [])
+
+  // Handle body scroll when sidebar is open
+  useEffect(() => {
+    if (isMenuOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = 'unset'
+    }
+
+    // Cleanup function to reset overflow when component unmounts
+    return () => {
+      document.body.style.overflow = 'unset'
+    }
+  }, [isMenuOpen])
 
 	return (
 		<header className='sticky top-0 z-50 w-full bg-background border-b-4 border-primary px-6 py-4'>
@@ -91,7 +105,7 @@ export default function Header() {
 
         {/* Mobile Menu Button */}
         <button
-          className="md:hidden p-2 border-2 border-foreground  rounded-sm"
+          className="md:hidden p-2 border-2 border-foreground rounded-sm hover:bg-muted transition-colors"
           onClick={() => setIsMenuOpen(!isMenuOpen)}
         >
           {isMenuOpen ? (
@@ -102,32 +116,126 @@ export default function Header() {
         </button>
       </div>
 
-      {/* Mobile Menu */}
+      {/* Mobile Sidebar Overlay */}
       {isMenuOpen && (
-        <div className="md:hidden mt-4 pb-4 border-t-2 border-foreground">
-          <nav className="flex flex-col space-y-4 pt-4">
-            <a
-              href="/docs"
-              className="font-semibold text-black hover:text-purple-400 transition-colors"
+        <div 
+          className="fixed inset-0 z-50 md:hidden"
+          onClick={() => setIsMenuOpen(false)}
+        >
+          <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" />
+        </div>
+      )}
+
+      {/* Mobile Sidebar */}
+      <div className={`
+        fixed top-0 right-0 h-full w-80 max-w-[80vw] z-50 md:hidden
+        bg-background border-l-4 border-foreground shadow-[0_0_0_4px_rgba(0,0,0,0.3)]
+        transform transition-transform duration-300 ease-in-out
+        ${isMenuOpen ? 'translate-x-0' : 'translate-x-full'}
+      `}>
+        {/* Sidebar Header */}
+        <div className="flex items-center justify-between p-6 border-b-2 border-foreground">
+          <h2 className="text-xl font-bold text-foreground">Menu</h2>
+          <button
+            onClick={() => setIsMenuOpen(false)}
+            className="p-2 border-2 border-foreground rounded-sm hover:bg-muted transition-colors"
+          >
+            <X className="w-5 h-5 text-foreground" />
+          </button>
+        </div>
+
+        {/* Sidebar Content */}
+        <div className="p-6 space-y-6">
+          {/* Navigation Links */}
+          <nav className="space-y-4">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-4">
+              Navigation
+            </h3>
+            
+            <Link
+              href="/"
+              className="flex items-center space-x-3 p-3 border-2 border-foreground rounded-sm hover:bg-muted transition-colors group"
+              onClick={() => setIsMenuOpen(false)}
             >
-              Docs
-            </a>
-            <a
-              href="/github"
-              className="font-semibold text-black hover:text-purple-400 transition-colors"
-            >
-              GitHub
-            </a>
+              <Home className="w-5 h-5 text-foreground group-hover:text-purple-400 transition-colors" />
+              <span className="font-semibold text-foreground group-hover:text-purple-400 transition-colors">
+                Home
+              </span>
+            </Link>
 
             <Link
               href="/features"
-              className="font-semibold text-foreground hover:text-purple-400 transition-colors"
+              className="flex items-center space-x-3 p-3 border-2 border-foreground rounded-sm hover:bg-muted transition-colors group"
+              onClick={() => setIsMenuOpen(false)}
             >
-              Features
+              <Zap className="w-5 h-5 text-foreground group-hover:text-purple-400 transition-colors" />
+              <span className="font-semibold text-foreground group-hover:text-purple-400 transition-colors">
+                Features
+              </span>
             </Link>
+
+            <a
+              href="/docs"
+              className="flex items-center space-x-3 p-3 border-2 border-foreground rounded-sm hover:bg-muted transition-colors group"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              <FileText className="w-5 h-5 text-foreground group-hover:text-purple-400 transition-colors" />
+              <span className="font-semibold text-foreground group-hover:text-purple-400 transition-colors">
+                Documentation
+              </span>
+            </a>
+
+            <a
+              href="https://github.com/ThePlator/NPMChat"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center space-x-3 p-3 border-2 border-foreground rounded-sm hover:bg-muted transition-colors group"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              <Github className="w-5 h-5 text-foreground group-hover:text-purple-400 transition-colors" />
+              <span className="font-semibold text-foreground group-hover:text-purple-400 transition-colors">
+                GitHub
+              </span>
+              {stars !== null && (
+                <span className="ml-auto text-xs bg-yellow-500 text-white px-2 py-1 rounded-sm font-semibold">
+                  {stars}
+                </span>
+              )}
+            </a>
           </nav>
+
+          {/* Theme & Tools Section */}
+          <div className="space-y-4 pt-6 border-t-2 border-foreground">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-4">
+              Tools
+            </h3>
+            
+            <div className="flex items-center justify-between p-3 border-2 border-foreground rounded-sm">
+              <span className="font-semibold text-foreground">Theme</span>
+              <ModeToggle />
+            </div>
+
+            <div className="flex space-x-2">
+              <button className="flex-1 p-3 border-2 border-foreground rounded-sm hover:bg-muted transition-colors group">
+                <Search className="w-5 h-5 text-foreground group-hover:text-purple-400 transition-colors mx-auto" />
+              </button>
+              <button className="flex-1 p-3 border-2 border-foreground rounded-sm hover:bg-muted transition-colors group">
+                <Heart className="w-5 h-5 text-foreground group-hover:text-purple-400 transition-colors mx-auto" />
+              </button>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="pt-6 text-center">
+            <p className="text-sm text-muted-foreground">
+              NPMChat v1.0
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Built with Next.js & TypeScript
+            </p>
+          </div>
         </div>
-      )}
+      </div>
     </header>
   )
 }
