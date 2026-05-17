@@ -1,10 +1,6 @@
 const BASES = {
-  auth:
-    process.env.NEXT_PUBLIC_AUTH_API_BASE ||
-    "http://localhost:8080/api/v1/auth",
-  messages:
-    process.env.NEXT_PUBLIC_MESSAGES_API_BASE ||
-    "http://localhost:8080/api/v1/messages",
+  auth: process.env.NEXT_PUBLIC_AUTH_API_BASE!,
+  messages: process.env.NEXT_PUBLIC_MESSAGES_API_BASE!,
 }
 
 let token: string | null = null
