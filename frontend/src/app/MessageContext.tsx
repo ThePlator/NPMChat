@@ -7,8 +7,36 @@ import React, {
 } from "react"
 import { api } from "./fetcher"
 import { io, Socket } from "socket.io-client"
+import { User } from "./AuthContext" // CHANGED: imported User interface
 
-const MessageContext = createContext<any>(null)
+export interface Message { // CHANGED: Added Message interface
+  _id: string;
+  text?: string;
+  senderId: string;
+  receiverId: string;
+  timestamp: string;
+  seen: boolean;
+  image?: string;
+}
+
+export interface MessageContextType { // CHANGED: Added MessageContextType
+  users: User[];
+  unseenMessages: Record<string, number>;
+  messages: Message[];
+  selectedUser: User | null;
+  setSelectedUser: (user: User | null) => void;
+  fetchUsers: () => void;
+  fetchMessages: (userId: string) => void;
+  markAsSeen: (messageId: string) => Promise<any>;
+  sendMessage: (receiverId: string, text: string, image?: string) => Promise<void>;
+  loadingUsers: boolean;
+  loadingMessages: boolean;
+  error: string | null;
+  setError: (error: string | null) => void;
+  socket: Socket | null;
+}
+
+const MessageContext = createContext<MessageContextType | null>(null) // CHANGED: Use MessageContextType instead of any
 
 export function useMessageContext() {
   return useContext(MessageContext)
@@ -19,15 +47,15 @@ export const MessageProvider = ({
   currentUser,
 }: {
   children: React.ReactNode
-  currentUser: any
+  currentUser: User | null // CHANGED: Use User type instead of any
 }) => {
-  const [users, setUsers] = useState<any[]>([])
+  const [users, setUsers] = useState<User[]>([]) // CHANGED: Use User[] instead of any[]
   const [onlineUsers, setOnlineUsers] = useState<string[]>([])
   const [unseenMessages, setUnseenMessages] = useState<Record<string, number>>(
     {},
   )
-  const [messages, setMessages] = useState<any[]>([])
-  const [selectedUser, setSelectedUser] = useState<any>(null)
+  const [messages, setMessages] = useState<Message[]>([]) // CHANGED: Use Message[] instead of any[]
+  const [selectedUser, setSelectedUser] = useState<User | null>(null) // CHANGED: Use User instead of any
   const [loadingUsers, setLoadingUsers] = useState(false)
   const [loadingMessages, setLoadingMessages] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -49,7 +77,7 @@ export const MessageProvider = ({
 
   // helper to update the online statuses
   const applyOnlineStatus = useCallback(
-    (usersList: any[], onlineIds: string[]) => {
+    (usersList: User[], onlineIds: string[]) => { // CHANGED: Use User[] instead of any[]
       return usersList.map((user) => {
         const userId = (user._id || user.id)?.toString()
         const isOnline = onlineIds.some(
@@ -96,7 +124,7 @@ export const MessageProvider = ({
           setMessages(msgs)
           // Mark unseen messages as seen (for current user)
           let anySeen = false
-          msgs.forEach((msg: any) => {
+          msgs.forEach((msg: Message) => { // CHANGED: Use Message instead of any
             if (!msg.seen && msg.receiverId === currentUser.id) {
               markAsSeen(msg._id)
               anySeen = true
@@ -119,7 +147,7 @@ export const MessageProvider = ({
   const markAsSeen = useCallback(
     (messageId: string) => {
       // Find the userId for this message
-      const msg = messages.find((m: any) => m._id === messageId)
+      const msg = messages.find((m: Message) => m._id === messageId) // CHANGED: Use Message instead of any
       if (msg) {
         setUnseenMessages((prev) => ({ ...prev, [msg.senderId]: 0 }))
       }
@@ -144,7 +172,7 @@ export const MessageProvider = ({
   const sendMessage = useCallback(
     async (receiverId: string, text: string, image?: string) => {
       try {
-        const body: any = { text }
+        const body: { text: string; image?: string } = { text } // CHANGED: Removed any type from body object
         if (image) body.image = image
         const res = await api.post(`/send/${receiverId}`, body)
 
@@ -169,7 +197,7 @@ export const MessageProvider = ({
           ...(messageData.image && { image: messageData.image }),
         }
 
-        setMessages((msgs: any[]) => [...msgs, newMessage])
+        setMessages((msgs: Message[]) => [...msgs, newMessage]) // CHANGED: Use Message[] instead of any[]
 
         // Also emit via socket for real-time
         if (socket) {
@@ -185,7 +213,7 @@ export const MessageProvider = ({
   // Listen for incoming messages
   useEffect(() => {
     if (!socket) return
-    const handleMessage = (msg: any) => {
+    const handleMessage = (msg: Message) => { // CHANGED: Use Message instead of any
       // Check if message is for current chat
       if (
         selectedUser &&
@@ -194,7 +222,7 @@ export const MessageProvider = ({
           msg.senderId === selectedUser.id ||
           msg.receiverId === selectedUser.id)
       ) {
-        setMessages((msgs: any[]) => [...msgs, msg])
+        setMessages((msgs: Message[]) => [...msgs, msg]) // CHANGED: Use Message[] instead of any[]
       }
 
       // Update unseen counts
@@ -211,7 +239,7 @@ export const MessageProvider = ({
     if (!socket) return
     const handleGetOnlineUsers = (onlineUserIds: string[]) => {
       setOnlineUsers(onlineUserIds)
-      setUsers((prevUsers: any[]) => {
+      setUsers((prevUsers: User[]) => { // CHANGED: Use User[] instead of any[]
         if (prevUsers.length === 0) {
           console.log("No users loaded yet")
           return prevUsers
