@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs"
 import cloudinary from "../lib/cloudinary.js"
 
 export const signup = async (req, res) => {
-  const { email, password, name, profilPic, bio } = req.body
+  const { email, password, name, profilePic, bio } = req.body
 
   try {
     // Validate input
@@ -29,7 +29,7 @@ export const signup = async (req, res) => {
       email,
       password: hashedPassword,
       name,
-      profilPic: profilPic || "", // Default to empty string if not provided
+      avatarUrl: profilePic || "", // Default to empty string if not provided
       bio: bio || "", // Default to empty string if not provided
     })
 
