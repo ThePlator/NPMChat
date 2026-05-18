@@ -1,17 +1,20 @@
 services:
   - type: web
     name: npmchat-backend
-    env: node
-    rootDir: backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    region: oregon
     plan: free
-    buildCommand: npm ci
-    startCommand: npm start
+    branch: main
     healthCheckPath: /api/health
     envVars:
-      - key: NODE_ENV
-        value: production
       - key: PORT
-        value: 8080
+        value: "8080"
+      - key: NODE_ENV
+        value: "production"
+      - key: CLIENT_URL
+        sync: false # Set manually in Render dashboard
       - key: MONGODB_URI
         sync: false
       - key: JWT_SECRET
@@ -21,6 +24,4 @@ services:
       - key: CLOUDINARY_API_KEY
         sync: false
       - key: CLOUDINARY_API_SECRET
-        sync: false
-      - key: CLIENT_URL
         sync: false

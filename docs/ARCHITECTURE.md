@@ -25,10 +25,10 @@ A modern, responsive UI built with TypeScript and Tailwind CSS.
    - Recipient's frontend receives socket event and updates local message state.
 
 ## Deployment Strategy
-- **Frontend:** Vercel (Recommended).
-- **Backend:** Railway / Render / DigitalOcean (Recommended due to WebSocket requirements).
-- **Database:** MongoDB Atlas.
+- **Frontend:** Vercel — handles Next.js SSR, static assets, and edge routing.
+- **Backend:** Render Web Service (Docker) — required for persistent Socket.IO WebSocket connections. See [DEPLOYMENT.md](/DEPLOYMENT.md) for setup.
+- **Database:** MongoDB Atlas (free tier available).
+- **CI:** GitHub Actions — validates Docker build and health check on every PR. See `.github/workflows/backend-ci.yml`.
 
-The backend keeps an explicit runtime check: it exports the Express app for
-Vercel compatibility, but starts `server.listen()` on persistent hosts so
-Socket.IO can maintain long-lived WebSocket connections.
+> **Note:** Vercel cannot host the backend because its serverless functions do not support persistent WebSocket connections. See [DEPLOYMENT.md](/DEPLOYMENT.md) for details.
+

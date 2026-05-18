@@ -1,0 +1,17 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+    ports:
+      - "8080:8080"
+    env_file:
+      - ./backend/.env
+    environment:
+      - NODE_ENV=development
+    volumes:
+      # Hot-reload: mount source code, but preserve container's node_modules
+      - ./backend:/app
+      - /app/node_modules
+    command: npx nodemon server.js

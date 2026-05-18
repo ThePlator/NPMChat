@@ -6,18 +6,19 @@ import { connectDB } from "./lib/db.js"
 import userRouter from "./routes/user.routes.js"
 import messageRouter from "./routes/message.routes.js"
 import { Server } from "socket.io"
-import { getRuntimePort, shouldStartHttpServer } from "./lib/runtime.js"
+import { isVercel, parsePort, getPlatform } from "./lib/runtime.js"
+
 
 const app = express()
 const server = http.createServer(app)
 
-const { CLIENT_URL, NODE_ENV } = process.env
+const { CLIENT_URL, NODE_ENV, PORT } = process.env
 
 // 1. Configure Allowed Origins
 const allowedOrigins = [
   CLIENT_URL,
   // Add localhost for local development
-  "http://localhost:3000", 
+  "http://localhost:3000",
   "http://localhost:5173" // Common Vite port, just in case
 ].filter(Boolean)
 
@@ -44,8 +45,7 @@ app.use(cors(corsOptions))
 app.options("*", cors(corsOptions))
 
 // 3. Socket.IO Setup
-// NOTE: This works locally. On Vercel, WebSocket connections often fail 
-// because Vercel functions are serverless and do not keep connections open.
+
 export const io = new Server(server, {
   cors: {
     origin: allowedOrigins,
@@ -83,10 +83,17 @@ app.use("/api/status", (req, res) => {
   res.status(200).json({ status: "ok" })
 })
 app.use("/api/health", (req, res) => {
+  if (NODE_ENV === "production") {
+    return res.status(200).json({ status: "ok" })
+  }
   res.status(200).json({
     status: "ok",
-    websocket: "socket.io",
-    runtime: process.env.VERCEL ? "vercel-serverless" : "persistent-node",
+    uptime: process.uptime(),
+    timestamp: Date.now(),
+    env: NODE_ENV || "development",
+    platform: getPlatform(),
+    nodeVersion: process.version,
+    memory: process.memoryUsage(),
   })
 })
 app.use("/api/v1/auth", userRouter)
@@ -98,21 +105,21 @@ app.use("/", (req, res) => {
 // 5. Database Connection
 // We wrap this so it doesn't crash the export if it takes time
 connectDB().then(() => {
-    console.log("Connected to DB");
+  console.log("Connected to DB");
 }).catch(err => {
-    console.error("DB Connection Failed", err);
+  console.error("DB Connection Failed", err);
 });
 
-// --- CRITICAL FIX FOR VERCEL ---
-
-// Vercel handles serverless invocations itself, but persistent WebSocket hosts
-// such as Render, Railway, Fly.io, and Docker must start the HTTP server.
-if (shouldStartHttpServer()) {
-  const port = getRuntimePort()
+// Start the HTTP server (required for Socket.IO WebSocket upgrade)
+// Skip server.listen() in Vercel serverless environment to prevent hangs/timeouts
+if (isVercel()) {
+  console.log("Running in Vercel Serverless environment. Skipping server.listen() and exporting Express app.")
+} else {
+  const port = parsePort(PORT || 8080)
   server.listen(port, () => {
-    console.log(`Server is running on port ${port}`)
+    console.log(`Server is running on port ${port} in ${getPlatform()} environment`)
   })
 }
 
-// Export the Express 'app' so Vercel can turn it into a Serverless Function
+// Export for potential use in integration tests (e.g., supertest)
 export default app
