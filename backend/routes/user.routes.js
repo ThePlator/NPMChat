@@ -1,3 +1,4 @@
+// backend/routes/user.routes.js
 import express from "express"
 import {
   checkAuth,
@@ -6,11 +7,15 @@ import {
   updateProfile,
 } from "../controllers/user.controller.js"
 import { protectRoute } from "../middleware/auth.js"
+import { validateBody } from "../middleware/validate.middleware.js"
+import { signupSchema, loginSchema } from "../schemas/user.schema.js"
 
 const userRouter = express.Router()
 
-userRouter.post("/login", login)
-userRouter.post("/signup", signup)
+// Applied validation middleware to signup and login endpoints
+userRouter.post("/signup", validateBody(signupSchema), signup)
+userRouter.post("/login", validateBody(loginSchema), login)
+
 userRouter.get("/check-auth", protectRoute, checkAuth)
 userRouter.put("/update-profile", protectRoute, updateProfile)
 
