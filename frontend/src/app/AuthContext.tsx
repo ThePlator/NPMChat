@@ -2,10 +2,30 @@
 import React, { createContext, useContext, useState, useEffect } from "react"
 import { api, setToken, getToken } from "./fetcher"
 
-const AuthContext = createContext<any>(null)
+export interface User { // CHANGED: Added User interface to replace any
+  id?: string;
+  _id?: string;
+  name?: string;
+  email?: string;
+  avatarUrl?: string;
+  status?: "online" | "offline";
+  bio?: string;
+}
 
+export interface AuthContextType { // CHANGED: Added AuthContextType to replace any
+  user: User | null;
+  loading: boolean;
+  error: string | null;
+  signup: (data: Record<string, unknown>) => Promise<any>;
+  login: (data: Record<string, unknown>) => Promise<any>;
+  logout: () => void;
+  checkAuth: () => Promise<void>;
+  updateProfile: (data: Record<string, unknown>) => Promise<any>;
+}
+
+const AuthContext = createContext<AuthContextType | null>(null) // CHANGED: Use AuthContextType instead of any
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<User | null>(null) // CHANGED: Use User type instead of any
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -15,7 +35,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     else setLoading(false)
   }, [])
 
-  async function signup(data: any) {
+  async function signup(data: Record<string, unknown>) { // CHANGED: Replaced any with Record<string, unknown>
     setError(null)
     setLoading(true)
     try {
@@ -31,7 +51,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  async function login(data: any) {
+  async function login(data: Record<string, unknown>) { // CHANGED: Replaced any with Record<string, unknown>
     setError(null)
     setLoading(true)
     try {
@@ -64,7 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setToken(null)
   }
 
-  async function updateProfile(data: any) {
+  async function updateProfile(data: Record<string, unknown>) { // CHANGED: Replaced any with Record<string, unknown>
     setLoading(true)
     try {
       const res = await api.put("/update-profile", data, "auth")
