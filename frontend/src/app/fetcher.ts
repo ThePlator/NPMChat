@@ -1,11 +1,14 @@
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
+
 const BASES = {
   auth:
     process.env.NEXT_PUBLIC_AUTH_API_BASE ||
-    "http://localhost:8080/api/v1/auth",
+    `${API_URL}/api/v1/auth`,
   messages:
     process.env.NEXT_PUBLIC_MESSAGES_API_BASE ||
-    "http://localhost:8080/api/v1/messages",
+    `${API_URL}/api/v1/messages`,
 }
+
 
 let token: string | null = null
 
