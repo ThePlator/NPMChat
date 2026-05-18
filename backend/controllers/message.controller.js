@@ -6,26 +6,36 @@ import { io, userSocketMap } from "../server.js"
 export const getUserForSidebar = async (req, res) => {
   try {
     const userId = req.user._id // Get the user ID from the request object
-    const filteredUser = await User.find({ _id: { $ne: userId } }).select(
-      "-password",
+
+    const [filteredUser, unseenMessageCounts] = await Promise.all([
+      User.find({ _id: { $ne: userId } }).select("-password").lean(),
+      Message.aggregate([
+        {
+          $match: {
+            receiverId: userId,
+            seen: false,
+          },
+        },
+        {
+          $group: {
+            _id: "$senderId",
+            count: { $sum: 1 },
+          },
+        },
+      ]),
+    ])
+
+    const unseenMessages = Object.fromEntries(
+      filteredUser.map((user) => [user._id, 0]),
     )
 
-    const unseenMessages = {}
-
-    const promises = filteredUser.map(async (user) => {
-      const message = await Message.find({
-        senderId: user._id,
-        receiverId: userId,
-        seen: false,
-      })
-      if (message.length > 0) {
-        unseenMessages[user._id] = message.length
-      } else {
-        unseenMessages[user._id] = 0
+    unseenMessageCounts.forEach(({ _id, count }) => {
+      const senderId = _id.toString()
+      if (Object.prototype.hasOwnProperty.call(unseenMessages, senderId)) {
+        unseenMessages[senderId] = count
       }
     })
 
-    await Promise.all(promises)
     res.status(200).json({
       users: filteredUser,
       unseenMessages: unseenMessages,
