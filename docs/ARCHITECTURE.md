@@ -28,3 +28,7 @@ A modern, responsive UI built with TypeScript and Tailwind CSS.
 - **Frontend:** Vercel (Recommended).
 - **Backend:** Railway / Render / DigitalOcean (Recommended due to WebSocket requirements).
 - **Database:** MongoDB Atlas.
+
+The backend keeps an explicit runtime check: it exports the Express app for
+Vercel compatibility, but starts `server.listen()` on persistent hosts so
+Socket.IO can maintain long-lived WebSocket connections.

@@ -6,11 +6,12 @@ import { connectDB } from "./lib/db.js"
 import userRouter from "./routes/user.routes.js"
 import messageRouter from "./routes/message.routes.js"
 import { Server } from "socket.io"
+import { getRuntimePort, shouldStartHttpServer } from "./lib/runtime.js"
 
 const app = express()
 const server = http.createServer(app)
 
-const { CLIENT_URL, NODE_ENV, PORT } = process.env
+const { CLIENT_URL, NODE_ENV } = process.env
 
 // 1. Configure Allowed Origins
 const allowedOrigins = [
@@ -81,6 +82,13 @@ app.use(express.json({ limit: "4mb" }))
 app.use("/api/status", (req, res) => {
   res.status(200).json({ status: "ok" })
 })
+app.use("/api/health", (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    websocket: "socket.io",
+    runtime: process.env.VERCEL ? "vercel-serverless" : "persistent-node",
+  })
+})
 app.use("/api/v1/auth", userRouter)
 app.use("/api/v1/messages", messageRouter)
 app.use("/", (req, res) => {
@@ -97,10 +105,10 @@ connectDB().then(() => {
 
 // --- CRITICAL FIX FOR VERCEL ---
 
-// Only run server.listen if we are LOCALLY developing.
-// Vercel handles the server start automatically, so calling listen() there causes a timeout/crash.
-if (NODE_ENV !== "production") {
-  const port = PORT || 8080
+// Vercel handles serverless invocations itself, but persistent WebSocket hosts
+// such as Render, Railway, Fly.io, and Docker must start the HTTP server.
+if (shouldStartHttpServer()) {
+  const port = getRuntimePort()
   server.listen(port, () => {
     console.log(`Server is running on port ${port}`)
   })

@@ -88,7 +88,7 @@ Follow these steps to set up **CodeChat** on your local machine.
 | **1**| **Install Prerequisites**  | - [Node.js v18+](https://nodejs.org/) <br> - MongoDB (local or [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)) <br> - [Cloudinary Account](https://cloudinary.com/) <br> - *(Optional)* Clerk account for authentication |
 | **2** | **Clone Repository** | ```bash<br>git clone https://github.com/ThePlator/NPMChat<br>cd NPMChat<br>``` |
 | **3** | **Setup Backend** | ```bash<br>cd backend<br>npm install<br>``` |
-|      | **Configure Environment** | Create `.env` file in `backend/` with: <br>```env<br>MONGODB_URI=your_mongodb_connection_string<br>JWT_SECRET=your_jwt_secret<br>CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name<br>CLOUDINARY_API_KEY=your_cloudinary_api_key<br>CLOUDINARY_API_SECRET=your_cloudinary_api_secret<br>``` |
+|      | **Configure Environment** | Create `.env` file in `backend/` with: <br>```env<br>PORT=8080<br>NODE_ENV=development<br>CLIENT_URL=http://localhost:3000<br>MONGODB_URI=your_mongodb_connection_string<br>JWT_SECRET=your_jwt_secret<br>CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name<br>CLOUDINARY_API_KEY=your_cloudinary_api_key<br>CLOUDINARY_API_SECRET=your_cloudinary_api_secret<br>``` |
 |      | **Run Backend** | ```bash<br>npm run dev<br>``` <br>Backend runs at **[http://localhost:8080](http://localhost:8080)** |
 | **4**| **Setup Frontend** | ```bash<br>cd ../frontend<br>npm install<br>``` |
 |      | **Configure Environment** | Create `.env.local` in `frontend/` with: <br>```env<br>NEXT_PUBLIC_API_URL=http://localhost:8080<br>``` |
@@ -96,6 +96,16 @@ Follow these steps to set up **CodeChat** on your local machine.
 | **5**| **Done! 🎉** | You now have **CodeChat** running locally with both frontend & backend active. |
 
 ---
+
+## Deployment
+
+Deploy the frontend to Vercel and the Socket.IO backend to a persistent Node.js
+host such as Render, Railway, Fly.io, DigitalOcean, or Docker. Vercel Serverless
+Functions do not keep WebSocket connections open, so the backend should not be
+hosted there for production real-time chat.
+
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for the Render blueprint, Docker
+commands, health check endpoint, and frontend environment variables.
 
 
 ## Contributing

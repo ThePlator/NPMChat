@@ -58,6 +58,9 @@ This is the backend for the ChatApp open source project. It provides real-time m
    Create a `.env` file in the `backend` directory with the following:
 
    ```
+   PORT=8080
+   NODE_ENV=development
+   CLIENT_URL=http://localhost:3000
    MONGODB_URI=your_mongodb_connection_string
    JWT_SECRET=your_jwt_secret
    CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
@@ -70,6 +73,20 @@ This is the backend for the ChatApp open source project. It provides real-time m
    npm run dev
    ```
    The server will start on `http://localhost:8080` by default.
+
+---
+
+## Production Deployment
+
+Socket.IO requires a persistent Node.js process for production WebSocket
+connections. Deploy this backend on Render, Railway, Fly.io, DigitalOcean, or a
+Docker-capable host, and deploy the Next.js frontend separately on Vercel.
+
+The server starts automatically in production unless it detects the `VERCEL`
+serverless runtime. Use `/api/health` as the backend health check endpoint.
+
+For a ready Render blueprint and Docker commands, see
+[`../docs/DEPLOYMENT.md`](../docs/DEPLOYMENT.md).
 
 ---
 
@@ -91,6 +108,7 @@ This is the backend for the ChatApp open source project. It provides real-time m
 ### Status
 
 - `GET /api/status` — Health check
+- `GET /api/health` — Deployment health check with runtime metadata
 
 ---
 
