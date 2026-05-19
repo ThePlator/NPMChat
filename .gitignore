@@ -43,6 +43,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# docker
+docker-compose.override.yml
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
