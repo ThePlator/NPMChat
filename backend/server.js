@@ -2,17 +2,36 @@ import express from "express"
 import "dotenv/config"
 import cors from "cors"
 import http from "http"
+import helmet from "helmet"
+import rateLimit from "express-rate-limit"
 import { connectDB } from "./lib/db.js"
 import userRouter from "./routes/user.routes.js"
 import messageRouter from "./routes/message.routes.js"
 import { Server } from "socket.io"
 import { isVercel, parsePort, getPlatform } from "./lib/runtime.js"
 
-
 const app = express()
 const server = http.createServer(app)
 
 const { CLIENT_URL, NODE_ENV, PORT } = process.env
+
+app.use(helmet())
+
+const standardLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per window
+  message: { error: "Too many requests, please try again later." },
+  standardHeaders: true, 
+  legacyHeaders: false, 
+})
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // Stricter limit for auth/login routes
+  message: { error: "Too many authentication attempts, please try again later." },
+  standardHeaders: true,
+  legacyHeaders: false,
+})
 
 // 1. Configure Allowed Origins
 const allowedOrigins = [
@@ -78,7 +97,7 @@ io.on("connection", (socket) => {
 
 app.use(express.json({ limit: "4mb" }))
 
-// 4. Routes
+// 4. Routes with Rate Limiting applied
 app.use("/api/status", (req, res) => {
   res.status(200).json({ status: "ok" })
 })
@@ -96,8 +115,11 @@ app.use("/api/health", (req, res) => {
     memory: process.memoryUsage(),
   })
 })
-app.use("/api/v1/auth", userRouter)
-app.use("/api/v1/messages", messageRouter)
+
+// Apply strict limiter to auth routes, and standard limiter to message routes
+app.use("/api/v1/auth", authLimiter, userRouter)
+app.use("/api/v1/messages", standardLimiter, messageRouter)
+
 app.use("/", (req, res) => {
   res.send("NPMChat API is running")
 })
