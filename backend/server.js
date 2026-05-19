@@ -8,6 +8,7 @@ import { connectDB } from "./lib/db.js"
 import userRouter from "./routes/user.routes.js"
 import messageRouter from "./routes/message.routes.js"
 import { Server } from "socket.io"
+import { isVercel, parsePort, getPlatform } from "./lib/runtime.js"
 
 const app = express()
 const server = http.createServer(app)
@@ -98,7 +99,23 @@ io.on("connection", (socket) => {
 app.use(express.json({ limit: "4mb" }))
 
 // 4. Routes with Rate Limiting applied
-app.use("/api/status", (req, res) => res.status(200).json({ status: "ok" }))
+app.use("/api/status", (req, res) => {
+  res.status(200).json({ status: "ok" })
+})
+app.use("/api/health", (req, res) => {
+  if (NODE_ENV === "production") {
+    return res.status(200).json({ status: "ok" })
+  }
+  res.status(200).json({
+    status: "ok",
+    uptime: process.uptime(),
+    timestamp: Date.now(),
+    env: NODE_ENV || "development",
+    platform: getPlatform(),
+    nodeVersion: process.version,
+    memory: process.memoryUsage(),
+  })
+})
 
 // Apply strict limiter to auth routes, and standard limiter to message routes
 app.use("/api/v1/auth", authLimiter, userRouter)
@@ -116,16 +133,16 @@ connectDB().then(() => {
     console.error("DB Connection Failed", err);
 });
 
-// --- CRITICAL FIX FOR VERCEL ---
-
-// Only run server.listen if we are LOCALLY developing.
-// Vercel handles the server start automatically, so calling listen() there causes a timeout/crash.
-if (NODE_ENV !== "production") {
-  const port = PORT || 8080
+// Start the HTTP server (required for Socket.IO WebSocket upgrade)
+// Skip server.listen() in Vercel serverless environment to prevent hangs/timeouts
+if (isVercel()) {
+  console.log("Running in Vercel Serverless environment. Skipping server.listen() and exporting Express app.")
+} else {
+  const port = parsePort(PORT || 8080)
   server.listen(port, () => {
-    console.log(`Server is running on port ${port}`)
+    console.log(`Server is running on port ${port} in ${getPlatform()} environment`)
   })
 }
 
-// Export the Express 'app' so Vercel can turn it into a Serverless Function
+// Export for potential use in integration tests (e.g., supertest)
 export default app
