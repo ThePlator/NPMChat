@@ -1,0 +1,74 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "docker-compose.yml"
+      - ".github/workflows/backend-ci.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "docker-compose.yml"
+      - ".github/workflows/backend-ci.yml"
+
+jobs:
+  docker-build:
+    name: Build & Verify Docker Image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build --target production -t npmchat-backend:ci ./backend
+
+      - name: Start container with health check
+        run: |
+          docker run -d \
+            --name npmchat-test \
+            -p 8080:8080 \
+            -e PORT=8080 \
+            -e NODE_ENV=development \
+            -e CI=true \
+            -e MONGODB_URI="mongodb://placeholder:27017/test" \
+            -e JWT_SECRET="ci-test-secret" \
+            -e CLIENT_URL="http://localhost:3000" \
+            -e CLOUDINARY_CLOUD_NAME="test" \
+            -e CLOUDINARY_API_KEY="test" \
+            -e CLOUDINARY_API_SECRET="test" \
+            npmchat-backend:ci
+
+      - name: Wait for server startup with retry loop
+        run: |
+          for i in $(seq 1 20); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/health || true)
+            if [ "$STATUS" = "200" ]; then
+              echo " Health check passed (HTTP 200) on attempt $i"
+              exit 0
+            fi
+            echo "Waiting for server... (attempt $i/20, status: $STATUS)"
+            sleep 2
+          done
+          echo " Server failed to respond successfully within time limit"
+          docker logs npmchat-test
+          exit 1
+
+      - name: Verify server runtime metadata
+        run: |
+          RESPONSE=$(curl -s http://localhost:8080/api/health)
+          echo "Metadata Response: $RESPONSE"
+          echo "$RESPONSE" | grep -q '"platform"' || (echo " Missing platform metadata" && exit 1)
+          echo "$RESPONSE" | grep -q '"nodeVersion"' || (echo " Missing Node version metadata" && exit 1)
+          echo " Server is running in development mode and returning rich runtime metadata"
+
+      - name: Print container logs (debug)
+        if: always()
+        run: docker logs npmchat-test
+
+      - name: Cleanup
+        if: always()
+        run: docker rm -f npmchat-test
