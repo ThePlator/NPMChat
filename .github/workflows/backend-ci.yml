@@ -33,6 +33,7 @@ jobs:
             -p 8080:8080 \
             -e PORT=8080 \
             -e NODE_ENV=development \
+            -e CI=true \
             -e MONGODB_URI="mongodb://placeholder:27017/test" \
             -e JWT_SECRET="ci-test-secret" \
             -e CLIENT_URL="http://localhost:3000" \
@@ -44,7 +45,7 @@ jobs:
       - name: Wait for server startup with retry loop
         run: |
           for i in $(seq 1 20); do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/health)
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/health || true)
             if [ "$STATUS" = "200" ]; then
               echo " Health check passed (HTTP 200) on attempt $i"
               exit 0
