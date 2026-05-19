@@ -1,6 +1,16 @@
 "use client"
 
-import { Search, Heart, Menu, X, Star, Github, FileText, Zap, Home } from "lucide-react"
+import {
+  Search,
+  Heart,
+  Menu,
+  X,
+  Star,
+  Github,
+  FileText,
+  Zap,
+  Home,
+} from "lucide-react"
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { ModeToggle } from "../ui/mode-toggle"
@@ -9,6 +19,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip"
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [stars, setStars] = useState<number | null>(null)
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
 
   useEffect(() => {
     fetch("https://api.github.com/repos/ThePlator/NPMChat")
@@ -20,31 +31,36 @@ export default function Header() {
   // Handle body scroll when sidebar is open
   useEffect(() => {
     if (isMenuOpen) {
-      document.body.style.overflow = 'hidden'
+      document.body.style.overflow = "hidden"
     } else {
-      document.body.style.overflow = 'unset'
+      document.body.style.overflow = "unset"
     }
 
     // Cleanup function to reset overflow when component unmounts
     return () => {
-      document.body.style.overflow = 'unset'
+      document.body.style.overflow = "unset"
     }
   }, [isMenuOpen])
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsSearchOpen(false)
+    }
+    document.addEventListener("keydown", handleKeyDown)
+    return () => document.removeEventListener("keydown", handleKeyDown)
+  }, [])
 
-	return (
-		<header className='sticky top-0 z-50 w-full bg-background border-b-4 border-primary px-6 py-4'>
-			<div className='max-w-7xl mx-auto flex items-center justify-between'>
-				{/* Logo */}
-				<div className='flex items-center space-x-2'>
-					<div className='w-8 h-8 bg-primary rounded-sm flex items-center justify-center'>
-						<span className='text-background font-bold text-sm'>
-							N
-						</span>
-					</div>
-					<span className='font-bold text-2xl tracking-tight text-primary'>
-						NPMChat
-					</span>
-				</div>
+  return (
+    <header className="sticky top-0 z-50 w-full bg-background border-b-4 border-primary px-6 py-4">
+      <div className="max-w-7xl mx-auto flex items-center justify-between">
+        {/* Logo */}
+        <div className="flex items-center space-x-2">
+          <div className="w-8 h-8 bg-primary rounded-sm flex items-center justify-center">
+            <span className="text-background font-bold text-sm">N</span>
+          </div>
+          <span className="font-bold text-2xl tracking-tight text-primary">
+            NPMChat
+          </span>
+        </div>
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-8">
@@ -95,7 +111,10 @@ export default function Header() {
           <div>
             <ModeToggle />
           </div>
-          <button className="p-2 hover:bg-muted rounded-sm transition-colors">
+          <button
+            className="p-2 hover:bg-muted rounded-sm transition-colors"
+            onClick={() => setIsSearchOpen(true)}
+          >
             <Search className="w-5 h-5 text-primary" />
           </button>
           <button className="p-2 hover:bg-muted rounded-sm transition-colors">
@@ -118,7 +137,7 @@ export default function Header() {
 
       {/* Mobile Sidebar Overlay */}
       {isMenuOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-50 md:hidden"
           onClick={() => setIsMenuOpen(false)}
         >
@@ -127,12 +146,14 @@ export default function Header() {
       )}
 
       {/* Mobile Sidebar */}
-      <div className={`
+      <div
+        className={`
         fixed top-0 right-0 h-full w-80 max-w-[80vw] z-50 md:hidden
         bg-background border-l-4 border-foreground shadow-[0_0_0_4px_rgba(0,0,0,0.3)]
         transform transition-transform duration-300 ease-in-out
-        ${isMenuOpen ? 'translate-x-0' : 'translate-x-full'}
-      `}>
+        ${isMenuOpen ? "translate-x-0" : "translate-x-full"}
+      `}
+      >
         {/* Sidebar Header */}
         <div className="flex items-center justify-between p-6 border-b-2 border-foreground">
           <h2 className="text-xl font-bold text-foreground">Menu</h2>
@@ -151,7 +172,7 @@ export default function Header() {
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-4">
               Navigation
             </h3>
-            
+
             <Link
               href="/"
               className="flex items-center space-x-3 p-3 border-2 border-foreground rounded-sm hover:bg-muted transition-colors group"
@@ -209,7 +230,7 @@ export default function Header() {
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-4">
               Tools
             </h3>
-            
+
             <div className="flex items-center justify-between p-3 border-2 border-foreground rounded-sm">
               <span className="font-semibold text-foreground">Theme</span>
               <ModeToggle />
@@ -227,15 +248,48 @@ export default function Header() {
 
           {/* Footer */}
           <div className="pt-6 text-center">
-            <p className="text-sm text-muted-foreground">
-              NPMChat v1.0
-            </p>
+            <p className="text-sm text-muted-foreground">NPMChat v1.0</p>
             <p className="text-xs text-muted-foreground mt-1">
               Built with Next.js & TypeScript
             </p>
           </div>
         </div>
       </div>
+      {/* Search Modal */}
+      {isSearchOpen && (
+        <div
+          className="fixed inset-0 z-[100] flex items-start justify-center pt-20 px-4"
+          onClick={() => setIsSearchOpen(false)}
+        >
+          <div className="absolute inset-0 bg-black/50" />
+          <div
+            className="relative w-full max-w-lg bg-background border-4 border-foreground shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-foreground">Search</h2>
+              <button
+                onClick={() => setIsSearchOpen(false)}
+                className="p-1 border-2 border-foreground hover:bg-muted transition-colors"
+              >
+                <X className="w-4 h-4 text-foreground" />
+              </button>
+            </div>
+            <div className="flex items-center border-4 border-foreground">
+              <Search className="w-5 h-5 text-foreground ml-3" />
+              <input
+                autoFocus
+                type="text"
+                placeholder="Search docs, features..."
+                className="w-full p-3 bg-background text-foreground font-semibold placeholder:text-muted-foreground outline-none"
+              />
+            </div>
+            <p className="mt-3 text-xs text-muted-foreground font-semibold">
+              Press ESC to close
+            </p>
+          </div>
+        </div>
+      )}
     </header>
   )
 }
