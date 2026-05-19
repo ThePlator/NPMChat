@@ -10,25 +10,10 @@ import messageRouter from "./routes/message.routes.js"
 import { Server } from "socket.io"
 import { isVercel, parsePort, getPlatform } from "./lib/runtime.js"
 
-
 const app = express()
 const server = http.createServer(app)
 
 const { CLIENT_URL, NODE_ENV, PORT } = process.env
-
-// 1. Configure Allowed Origins
-const allowedOrigins = [
-  CLIENT_URL,
-  // Add localhost for local development
-  "http://localhost:3000",
-  "http://localhost:5173" // Common Vite port, just in case
-].filter(Boolean)
-
-if (!CLIENT_URL && NODE_ENV === "production") {
-  console.error(
-    "ERROR: CLIENT_URL is not set. Set it to your frontend URL (e.g. https://your-frontend.example).",
-  )
-}
 
 app.use(helmet())
 
@@ -135,26 +120,6 @@ app.use("/api/health", (req, res) => {
 app.use("/api/v1/auth", authLimiter, userRouter)
 app.use("/api/v1/messages", standardLimiter, messageRouter)
 
-// 4. Routes
-app.use("/api/status", (req, res) => {
-  res.status(200).json({ status: "ok" })
-})
-app.use("/api/health", (req, res) => {
-  if (NODE_ENV === "production") {
-    return res.status(200).json({ status: "ok" })
-  }
-  res.status(200).json({
-    status: "ok",
-    uptime: process.uptime(),
-    timestamp: Date.now(),
-    env: NODE_ENV || "development",
-    platform: getPlatform(),
-    nodeVersion: process.version,
-    memory: process.memoryUsage(),
-  })
-})
-app.use("/api/v1/auth", userRouter)
-app.use("/api/v1/messages", messageRouter)
 app.use("/", (req, res) => {
   res.send("NPMChat API is running")
 })
