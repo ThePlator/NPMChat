@@ -37,7 +37,7 @@ const authLimiter = rateLimit({
 const allowedOrigins = [
   CLIENT_URL,
   // Add localhost for local development
-  "http://localhost:3000", 
+  "http://localhost:3000",
   "http://localhost:5173" // Common Vite port, just in case
 ].filter(Boolean)
 
@@ -64,8 +64,7 @@ app.use(cors(corsOptions))
 app.options("*", cors(corsOptions))
 
 // 3. Socket.IO Setup
-// NOTE: This works locally. On Vercel, WebSocket connections often fail 
-// because Vercel functions are serverless and do not keep connections open.
+
 export const io = new Server(server, {
   cors: {
     origin: allowedOrigins,
@@ -128,9 +127,9 @@ app.use("/", (req, res) => {
 // 5. Database Connection
 // We wrap this so it doesn't crash the export if it takes time
 connectDB().then(() => {
-    console.log("Connected to DB");
+  console.log("Connected to DB");
 }).catch(err => {
-    console.error("DB Connection Failed", err);
+  console.error("DB Connection Failed", err);
 });
 
 // Start the HTTP server (required for Socket.IO WebSocket upgrade)
