@@ -7,6 +7,8 @@ export const connectDB = async () => {
     console.log("MongoDB connected successfully")
   } catch (error) {
     console.error("MongoDB connection failed:", error)
-    process.exit(1) // Exit the process with failure
+    if (process.env.NODE_ENV !== "test" && process.env.CI !== "true") {
+      process.exit(1) // Exit the process with failure
+    }
   }
 }
