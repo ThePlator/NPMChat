@@ -2,9 +2,10 @@ import User from "../models/User.js"
 import { generateToken } from "../lib/utils.js"
 import bcrypt from "bcryptjs"
 import cloudinary from "../lib/cloudinary.js"
+import { verifyRecaptcha } from "../lib/verifyRecaptcha.js"
 
 export const signup = async (req, res) => {
-  const { email, password, name, avatarUrl, bio } = req.body // CHANGED: Standardize on avatarUrl instead of profilPic
+  const { email, password, name, avatarUrl, bio, captchaToken } = req.body // CHANGED: Standardize on avatarUrl instead of profilPic
 
   try {
     // Validate input
@@ -12,6 +13,20 @@ export const signup = async (req, res) => {
       return res
         .status(400)
         .json({ message: "Email, password, and name are required." })
+    }
+
+    if (!captchaToken) {
+      return res.status(400).json({
+        message: "CAPTCHA token is required.",
+      })
+    }
+
+    const isHuman = await verifyRecaptcha(captchaToken)
+
+    if (!isHuman) {
+      return res.status(400).json({
+        message: "CAPTCHA verification failed.",
+      })
     }
 
     // Check if user already exists
@@ -56,7 +71,7 @@ export const signup = async (req, res) => {
 }
 
 export const login = async (req, res) => {
-  const { email, password } = req.body
+  const { email, password, captchaToken } = req.body
 
   try {
     // Validate input
@@ -64,6 +79,20 @@ export const login = async (req, res) => {
       return res
         .status(400)
         .json({ message: "Email and password are required." })
+    }
+
+    if (!captchaToken) {
+      return res.status(400).json({
+        message: "CAPTCHA token is required.",
+      })
+    }
+
+    const isHuman = await verifyRecaptcha(captchaToken)
+
+    if (!isHuman) {
+      return res.status(400).json({
+        message: "CAPTCHA verification failed.",
+      })
     }
 
     // Find user by email
