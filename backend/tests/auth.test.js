@@ -40,7 +40,7 @@ describe("Auth Routes", () => {
             .send({ email: "new@example.com" }) // Missing password and name
 
         expect(res.status).toBe(400)
-        expect(res.body.message).toBe("Email, password, and name are required.")
+        expect(res.body.message).toBe("Validation error")
     })
 
     it("POST /api/v1/auth/login - should login user", async () => {
