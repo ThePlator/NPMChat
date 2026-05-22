@@ -85,4 +85,13 @@ describe("Auth Routes", () => {
         expect(res.status).toBe(401)
         expect(res.body.message).toBe("Not authorized, no token")
     })
+
+    it("GET /api/v1/auth/check-auth - should fail if token is invalid", async () => {
+        const res = await request(app)
+            .get("/api/v1/auth/check-auth")
+            .set("Authorization", `Bearer invalid_fake_token`)
+
+        expect(res.status).toBe(401)
+        expect(res.body.message).toBe("Not authorized, token failed")
+    })
 })
