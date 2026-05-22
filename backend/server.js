@@ -21,8 +21,8 @@ const standardLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // Limit each IP to 100 requests per window
   message: { error: "Too many requests, please try again later." },
-  standardHeaders: true, 
-  legacyHeaders: false, 
+  standardHeaders: true,
+  legacyHeaders: false,
 })
 
 const authLimiter = rateLimit({
@@ -125,22 +125,20 @@ app.use("/", (req, res) => {
 })
 
 // 5. Database Connection
-// We wrap this so it doesn't crash the export if it takes time
-connectDB().then(() => {
-  console.log("Connected to DB");
-}).catch(err => {
-  console.error("DB Connection Failed", err);
-});
-
-// Start the HTTP server (required for Socket.IO WebSocket upgrade)
-// Skip server.listen() in Vercel serverless environment to prevent hangs/timeouts
+if (process.env.NODE_ENV !== "test") {
+  connectDB().then(() => {
+    console.log("Connected to DB");
+  }).catch(err => {
+    console.error("DB Connection Failed", err);
+  });
+}
 if (isVercel()) {
-  console.log("Running in Vercel Serverless environment. Skipping server.listen() and exporting Express app.")
-} else {
-  const port = parsePort(PORT || 8080)
+  console.log("Running in Vercel Serverless environment. Skipping server.listen() and exporting Express app.");
+} else if (process.env.NODE_ENV !== "test") {
+  const port = parsePort(process.env.PORT || 8080);
   server.listen(port, () => {
-    console.log(`Server is running on port ${port} in ${getPlatform()} environment`)
-  })
+    console.log(`Server is running on port ${port} in ${getPlatform()} environment`);
+  });
 }
 
 // Export for potential use in integration tests (e.g., supertest)
