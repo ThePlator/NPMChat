@@ -7,9 +7,12 @@ import { Eye, EyeOff } from "lucide-react"
 
 import ProtectedRoute from "../../components/ProtectedRoute"
 import { toast } from "sonner"
+import ReCAPTCHA from "react-google-recaptcha";
 
 const accent = "#b39ddb" // pastel purple
 const accentGreen = "#39ff14" // neon green
+
+
 
 function LoginPageContent() {
   const router = useRouter()
@@ -20,6 +23,9 @@ function LoginPageContent() {
   )
   const [loading, setLoading] = useState(false)
   const [hidePassword, setHidePassword] = useState(true)
+
+  // Recaptcha State
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
 
   function validate() {
     const errs: typeof errors = {}
@@ -34,9 +40,16 @@ function LoginPageContent() {
     const errs = validate()
     setErrors(errs)
     if (Object.keys(errs).length) return
+    if (!captchaToken) {
+      toast.error("Please complete CAPTCHA verification")
+      return
+    }
     setLoading(true)
     try {
-      await login(form)
+      await login({
+        ...form,
+        captchaToken,
+      })
       toast.success("LoggedIn successful")
       setTimeout(() => {
         router.push("/chat")
@@ -53,6 +66,7 @@ function LoginPageContent() {
     <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#b39ddb]/40 via-white to-[#39ff14]/20 relative overflow-hidden">
       {/* Floating accent shape */}
       <div className="absolute -top-10 -right-10 w-40 h-40 bg-[#39ff14] border-2 border-black -rotate-12 opacity-60 z-0"></div>
+
       <form
         onSubmit={handleSubmit}
         className="relative z-10 w-full max-w-sm p-8 border-2 border-black bg-white flex flex-col gap-6 shadow-lg brutal-shadow hover:brutal-shadow-hover"
@@ -106,6 +120,14 @@ function LoginPageContent() {
             </span>
           )}
         </label>
+        <div className="flex justify-center">
+          <ReCAPTCHA
+            sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!}
+            onChange={(token: string | null) =>
+              setCaptchaToken(token)
+            }
+          />
+        </div>
         <button
           type="submit"
           disabled={loading}
