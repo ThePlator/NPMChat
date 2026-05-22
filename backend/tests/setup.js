@@ -4,6 +4,9 @@ import { beforeAll, afterAll, afterEach, vi } from "vitest"
 
 let mongoServer
 
+// Ensure a test JWT_SECRET is always available for token generation during testing
+process.env.JWT_SECRET = "test-secret"
+
 beforeAll(async () => {
     mongoServer = await MongoMemoryServer.create()
     const uri = mongoServer.getUri()
