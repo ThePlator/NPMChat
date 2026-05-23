@@ -7,6 +7,7 @@ import ProtectedRoute from "../../components/ProtectedRoute"
 import zxcvbn from "zxcvbn"
 import { toast } from "sonner"
 import { Eye, EyeOff } from "lucide-react"
+import ReCAPTCHA from "react-google-recaptcha"
 
 const accent = "#b39ddb" // pastel purple
 const accentGreen = "#39ff14" // neon green
@@ -28,6 +29,9 @@ function SignupPageContent() {
   const [loading, setLoading] = useState(false)
   const [hidePassword, setHidePassword] = useState(false)
 
+  // Recatcha state
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+
   function validate() {
     const errs: typeof errors = {}
     if (!form.name) errs.name = "Full name required"
@@ -42,9 +46,16 @@ function SignupPageContent() {
     const errs = validate()
     setErrors(errs)
     if (Object.keys(errs).length) return
+    if (!captchaToken) {
+      toast.error("Please complete CAPTCHA verification")
+      return
+    }
     setLoading(true)
     try {
-      await signup(form)
+      await signup({
+        ...form,
+        captchaToken,
+      })
       toast.success("Account created successfully!")
       setTimeout(() => {
         router.push("/chat")
@@ -150,7 +161,7 @@ function SignupPageContent() {
                 Strength:
                 {
                   ["Too Weak", "Weak", "Fair", "Good", "Strong"][
-                    passwordStrength.score
+                  passwordStrength.score
                   ]
                 }
               </div>
@@ -167,6 +178,14 @@ function SignupPageContent() {
             </span>
           )}
         </label>
+        <div className="flex justify-center">
+          <ReCAPTCHA
+            sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!}
+            onChange={(token: string | null) =>
+              setCaptchaToken(token)
+            }
+          />
+        </div>
         <button
           type="submit"
           disabled={loading}
