@@ -35,6 +35,8 @@ export interface MessageContextType { // CHANGED: Added MessageContextType
   error: string | null;
   setError: (error: string | null) => void;
   socket: Socket | null;
+  socketConnected: boolean;
+  socketError: string | null;
 }
 
 const MessageContext = createContext<MessageContextType | null>(null) // CHANGED: Use MessageContextType instead of any
@@ -65,26 +67,77 @@ export const MessageProvider = ({
   const [loadingMessages, setLoadingMessages] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [socket, setSocket] = useState<Socket | null>(null)
+  const [socketConnected, setSocketConnected] = useState<boolean>(false)
+  const [socketError, setSocketError] = useState<string | null>(null)
 
   // Connect to socket.io server with userId as query param
   useEffect(() => {
     if (!currentUser) return
     const userId = currentUser.id
-    const socket = io(process.env.NEXT_PUBLIC_API_URL ||"http://localhost:8080", {
-      transports: ["websocket"],
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL
+
+    if (!apiUrl && process.env.NODE_ENV === "production") {
+      const msg =
+        "NEXT_PUBLIC_API_URL is not set. Socket will attempt localhost:8080, which will fail in production."
+
+      console.error(msg)
+      setSocketError(msg)
+
+      toast.error(
+        "Configuration error: backend URL is not set. Contact your administrator.",
+        {
+          id: "socket-config-error",
+          duration: Infinity,
+        }
+      )
+
+      return
+    }
+
+    const resolvedUrl = apiUrl || "http://localhost:8080"
+
+    const socket = io(resolvedUrl, {
+      transports: ["polling", "websocket"],
       query: { userId },
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 2000,
     })
 
     socket.on("connect", () => {
       console.log("WebSocket connected successfully")
+      setSocketConnected(true)
+      setSocketError(null)
+
+      toast.success("Connected to chat server.", {
+        id: "socket-success",
+        duration: 2000,
+      })
     })
 
     socket.on("connect_error", (err) => {
-      console.error("WebSocket connection error:", err)
-      toast.error(`Chat server unreachable. Please check your connection or backend URL.`, {
-        id: "socket-error", // Persistent ID to prevent duplicate toasts
-        duration: 5000,
-      })
+      const detail = err.message || String(err)
+      const description =
+        (err as any).description ? ` (${(err as any).description})` : ""
+
+      console.error("WebSocket connection error:", detail + description, err)
+
+      setSocketConnected(false)
+      setSocketError(`Connection failed: ${detail}`)
+
+      toast.error(
+        `Chat server unreachable: ${detail}. Check NEXT_PUBLIC_API_URL or backend status.`,
+        {
+          id: "socket-error",
+          duration: 5000,
+        }
+      )
+    })
+
+    socket.on("disconnect", (reason) => {
+      console.warn("WebSocket disconnected:", reason)
+      setSocketConnected(false)
     })
 
     setSocket(socket)
@@ -306,6 +359,8 @@ export const MessageProvider = ({
         error,
         setError,
         socket,
+        socketConnected,
+        socketError,
       }}
     >
       {children}
