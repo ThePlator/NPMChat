@@ -8,6 +8,7 @@ import React, {
 import { api } from "./fetcher"
 import { io, Socket } from "socket.io-client"
 import { User } from "./AuthContext" // CHANGED: imported User interface
+import { toast } from "sonner" // ADDED: sonner for notifications
 
 export interface Message { // CHANGED: Added Message interface
   _id: string;
@@ -73,6 +74,19 @@ export const MessageProvider = ({
       transports: ["websocket"],
       query: { userId },
     })
+
+    socket.on("connect", () => {
+      console.log("WebSocket connected successfully")
+    })
+
+    socket.on("connect_error", (err) => {
+      console.error("WebSocket connection error:", err)
+      toast.error(`Chat server unreachable. Please check your connection or backend URL.`, {
+        id: "socket-error", // Persistent ID to prevent duplicate toasts
+        duration: 5000,
+      })
+    })
+
     setSocket(socket)
     return () => {
       socket.disconnect()
