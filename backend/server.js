@@ -38,7 +38,8 @@ const allowedOrigins = [
   CLIENT_URL,
   // Add localhost for local development
   "http://localhost:3000",
-  "http://localhost:5173" // Common Vite port, just in case
+  "http://localhost:5173", // Common Vite port, just in case
+  "https://npm-chat-fxjq.vercel.app"
 ].filter(Boolean)
 
 if (!CLIENT_URL && NODE_ENV === "production") {
@@ -136,8 +137,9 @@ if (isVercel()) {
   console.log("Running in Vercel Serverless environment. Skipping server.listen() and exporting Express app.");
 } else if (process.env.NODE_ENV !== "test") {
   const port = parsePort(process.env.PORT || 8080);
-  server.listen(port, () => {
+  server.listen(port, "0.0.0.0", () => {
     console.log(`Server is running on port ${port} in ${getPlatform()} environment`);
+    console.log(`CORS allowed origins: ${allowedOrigins.join(", ")}`);
   });
 }
 
