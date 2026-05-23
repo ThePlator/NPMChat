@@ -39,7 +39,11 @@ export interface MessageContextType { // CHANGED: Added MessageContextType
 const MessageContext = createContext<MessageContextType | null>(null) // CHANGED: Use MessageContextType instead of any
 
 export function useMessageContext() {
-  return useContext(MessageContext)
+  const context = useContext(MessageContext)
+  if (!context) {
+    throw new Error("useMessageContext must be used within a MessageProvider")
+  }
+  return context
 }
 
 export const MessageProvider = ({
@@ -87,7 +91,7 @@ export const MessageProvider = ({
         return {
           ...user,
           status: isOnline ? "online" : "offline",
-        }
+        } as User
       })
     },
     [],
@@ -125,7 +129,7 @@ export const MessageProvider = ({
           // Mark unseen messages as seen (for current user)
           let anySeen = false
           msgs.forEach((msg: Message) => { // CHANGED: Use Message instead of any
-            if (!msg.seen && msg.receiverId === currentUser.id) {
+            if (!msg.seen && msg.receiverId === currentUser?.id) {
               markAsSeen(msg._id)
               anySeen = true
             }
@@ -171,6 +175,7 @@ export const MessageProvider = ({
   // Send message (API: POST /send/:receiverId)
   const sendMessage = useCallback(
     async (receiverId: string, text: string, image?: string) => {
+      if (!currentUser) return
       try {
         const body: { text: string; image?: string } = { text } // CHANGED: Removed any type from body object
         if (image) body.image = image
