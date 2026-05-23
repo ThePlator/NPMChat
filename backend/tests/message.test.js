@@ -9,6 +9,7 @@ describe("Message Routes", () => {
     let user2Token = ""
     let user1Id = ""
     let user2Id = ""
+    let messageId = ""
 
     beforeAll(async () => {
         // Clear DB specifically for this suite
@@ -44,6 +45,7 @@ describe("Message Routes", () => {
         expect(res.body.data.text).toBe("Hello User Two!")
         expect(res.body.data.senderId).toBe(user1Id)
         expect(res.body.data.receiverId).toBe(user2Id)
+        messageId = res.body.data._id
     })
 
     it("GET /api/v1/messages/:id - should fetch conversation messages", async () => {
@@ -66,5 +68,14 @@ describe("Message Routes", () => {
         expect(Array.isArray(res.body.users)).toBe(true)
         // Should return other users, so length >= 1
         expect(res.body.users.some(u => u._id === user2Id)).toBe(true)
+    })
+
+    it("PUT /api/v1/messages/mark-as-seen/:messageId - should mark message as seen", async () => {
+        const res = await request(app)
+            .put(`/api/v1/messages/mark-as-seen/${messageId}`)
+            .set("Authorization", `Bearer ${user2Token}`)
+
+        expect(res.status).toBe(200)
+        expect(res.body.seen).toBe(true)
     })
 })
