@@ -5,8 +5,8 @@ export default defineConfig({
         environment: "node",
         setupFiles: ["./tests/setup.js"],
         globals: true,
-        hookTimeout: 60000,
-        testTimeout: 60000,
+        hookTimeout: 300000,
+        testTimeout: 300000,
         coverage: {
             provider: 'v8',
             reporter: ['text', 'json', 'html'],

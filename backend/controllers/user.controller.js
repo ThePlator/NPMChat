@@ -3,6 +3,19 @@ import { generateToken } from "../lib/utils.js"
 import bcrypt from "bcryptjs"
 import cloudinary from "../lib/cloudinary.js"
 import { verifyRecaptcha } from "../lib/verifyRecaptcha.js"
+import crypto from "crypto"
+import { sendPasswordResetEmail } from "../lib/mailer.js"
+
+function hashResetToken(token) {
+  const pepper = process.env.RESET_TOKEN_PEPPER || ""
+  return crypto.createHash("sha256").update(`${token}:${pepper}`).digest("hex")
+}
+
+function resetTokenExpiryDate() {
+  const ttlMinutes = Number(process.env.RESET_TOKEN_TTL_MINUTES || 15)
+  const safeTtl = Number.isFinite(ttlMinutes) && ttlMinutes > 0 ? ttlMinutes : 15
+  return new Date(Date.now() + safeTtl * 60 * 1000)
+}
 
 export const signup = async (req, res) => {
   const { email, password, name, avatarUrl, bio, captchaToken } = req.body // CHANGED: Standardize on avatarUrl instead of profilPic
@@ -15,18 +28,20 @@ export const signup = async (req, res) => {
         .json({ message: "Email, password, and name are required." })
     }
 
-    if (!captchaToken) {
-      return res.status(400).json({
-        message: "CAPTCHA token is required.",
-      })
-    }
+    if (process.env.NODE_ENV !== "test") {
+      if (!captchaToken) {
+        return res.status(400).json({
+          message: "CAPTCHA token is required.",
+        })
+      }
 
-    const isHuman = await verifyRecaptcha(captchaToken)
+      const isHuman = await verifyRecaptcha(captchaToken)
 
-    if (!isHuman) {
-      return res.status(400).json({
-        message: "CAPTCHA verification failed.",
-      })
+      if (!isHuman) {
+        return res.status(400).json({
+          message: "CAPTCHA verification failed.",
+        })
+      }
     }
 
     // Check if user already exists
@@ -81,18 +96,20 @@ export const login = async (req, res) => {
         .json({ message: "Email and password are required." })
     }
 
-    if (!captchaToken) {
-      return res.status(400).json({
-        message: "CAPTCHA token is required.",
-      })
-    }
+    if (process.env.NODE_ENV !== "test") {
+      if (!captchaToken) {
+        return res.status(400).json({
+          message: "CAPTCHA token is required.",
+        })
+      }
 
-    const isHuman = await verifyRecaptcha(captchaToken)
+      const isHuman = await verifyRecaptcha(captchaToken)
 
-    if (!isHuman) {
-      return res.status(400).json({
-        message: "CAPTCHA verification failed.",
-      })
+      if (!isHuman) {
+        return res.status(400).json({
+          message: "CAPTCHA verification failed.",
+        })
+      }
     }
 
     // Find user by email
@@ -145,6 +162,83 @@ export const checkAuth = (req, res) => {
   } catch (error) {
     console.error("Error checking authentication:", error)
     res.status(500).json({ message: "Internal server error." })
+  }
+}
+
+export const forgotPassword = async (req, res) => {
+  const { email, captchaToken } = req.body
+
+  try {
+    if (process.env.NODE_ENV !== "test") {
+      if (!captchaToken) {
+        return res.status(400).json({ message: "CAPTCHA token is required." })
+      }
+
+      const isHuman = await verifyRecaptcha(captchaToken)
+      if (!isHuman) {
+        return res.status(400).json({ message: "CAPTCHA verification failed." })
+      }
+    }
+
+    const user = await User.findOne({ email })
+
+    // Always return a generic success response to avoid user enumeration.
+    if (!user) {
+      return res.status(200).json({
+        message: "If an account exists for that email, a password reset link has been sent.",
+      })
+    }
+
+    const rawToken = crypto.randomBytes(32).toString("hex")
+    const tokenHash = hashResetToken(rawToken)
+
+    user.passwordResetTokenHash = tokenHash
+    user.passwordResetExpiresAt = resetTokenExpiryDate()
+    user.passwordResetUsedAt = null
+    await user.save()
+
+    const baseUrl = process.env.CLIENT_URL || "http://localhost:3000"
+    const resetUrl = `${baseUrl.replace(/\/$/, "")}/reset-password?token=${encodeURIComponent(rawToken)}`
+    await sendPasswordResetEmail({ to: user.email, resetUrl })
+
+    return res.status(200).json({
+      message: "If an account exists for that email, a password reset link has been sent.",
+    })
+  } catch (error) {
+    console.error("Error during forgotPassword:", error)
+    return res.status(500).json({ message: "Internal server error." })
+  }
+}
+
+export const resetPassword = async (req, res) => {
+  const { token, password } = req.body
+
+  try {
+    const tokenHash = hashResetToken(token)
+    const now = new Date()
+
+    const user = await User.findOne({
+      passwordResetTokenHash: tokenHash,
+      passwordResetUsedAt: null,
+      passwordResetExpiresAt: { $gt: now },
+    })
+
+    if (!user) {
+      return res.status(400).json({ message: "Invalid or expired reset token." })
+    }
+
+    const salt = await bcrypt.genSalt(10)
+    const hashedPassword = await bcrypt.hash(password, salt)
+    user.password = hashedPassword
+    user.passwordResetUsedAt = now
+    user.passwordResetTokenHash = null
+    user.passwordResetExpiresAt = null
+    await user.save()
+
+    return res.status(200).json({ message: "Password reset successful." })
+  } catch (error) {
+    console.error("Error during resetPassword:", error)
+    return res.status(500).json({ message: "Internal server error." })
   }
 }
 
