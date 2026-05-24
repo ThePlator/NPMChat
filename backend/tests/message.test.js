@@ -3,6 +3,7 @@ import request from "supertest"
 import app from "../server.js"
 import User from "../models/User.js"
 import Message from "../models/Message.js"
+import jwt from "jsonwebtoken"
 
 describe("Message Routes", () => {
     let user1Token = ""
@@ -17,19 +18,29 @@ describe("Message Routes", () => {
         await Message.deleteMany({})
 
         // Create User 1
+        const emailVerificationToken1 = jwt.sign(
+            { email: "user1@example.com", type: "email-verification" },
+            process.env.JWT_SECRET || "test-secret"
+        )
         const res1 = await request(app).post("/api/v1/auth/signup").send({
             email: "user1@example.com",
             password: "password123",
             name: "User One",
+            emailVerificationToken: emailVerificationToken1,
         })
         user1Token = res1.body.token
         user1Id = res1.body.user.id
 
         // Create User 2
+        const emailVerificationToken2 = jwt.sign(
+            { email: "user2@example.com", type: "email-verification" },
+            process.env.JWT_SECRET || "test-secret"
+        )
         const res2 = await request(app).post("/api/v1/auth/signup").send({
             email: "user2@example.com",
             password: "password123",
             name: "User Two",
+            emailVerificationToken: emailVerificationToken2,
         })
         user2Token = res2.body.token
         user2Id = res2.body.user.id
@@ -77,5 +88,13 @@ describe("Message Routes", () => {
 
         expect(res.status).toBe(200)
         expect(res.body.seen).toBe(true)
+    })
+
+    it("PUT /api/v1/messages/mark-as-seen/:messageId - should handle already seen message gracefully", async () => {
+        const res = await request(app)
+            .put(`/api/v1/messages/mark-as-seen/${messageId}`)
+            .set("Authorization", `Bearer ${user2Token}`)
+
+        expect(res.status).toBe(200)
     })
 })

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll } from "vitest"
 import request from "supertest"
 import app from "../server.js"
 import mongoose from "mongoose"
+import jwt from "jsonwebtoken"
 
 describe("Auth Routes", () => {
     let testToken = ""
@@ -12,9 +13,31 @@ describe("Auth Routes", () => {
     }
 
     it("POST /api/v1/auth/signup - should register a new user", async () => {
+        // 1. Send OTP
+        await request(app)
+            .post("/api/v1/auth/send-otp")
+            .send({ email: testUser.email })
+
+        // 2. Fetch the OTP from the test database
+        const otpRecord = await mongoose.model("OTP").findOne({ email: testUser.email })
+        expect(otpRecord).toBeDefined()
+        const otp = otpRecord.otp
+
+        // 3. Verify OTP to get emailVerificationToken
+        const verifyRes = await request(app)
+            .post("/api/v1/auth/verify-otp")
+            .send({ email: testUser.email, otp })
+        expect(verifyRes.status).toBe(200)
+        const emailVerificationToken = verifyRes.body.emailVerificationToken
+        expect(emailVerificationToken).toBeDefined()
+
+        // 4. Finally call signup with the token
         const res = await request(app)
             .post("/api/v1/auth/signup")
-            .send(testUser)
+            .send({
+                ...testUser,
+                emailVerificationToken,
+            })
 
         expect(res.status).toBe(201)
         expect(res.body.message).toBe("User created successfully.")
@@ -26,9 +49,19 @@ describe("Auth Routes", () => {
     })
 
     it("POST /api/v1/auth/signup - should fail with duplicate email", async () => {
+        // Sign verification token directly for testUser.email
+        const emailVerificationToken = jwt.sign(
+            { email: testUser.email, type: "email-verification" },
+            process.env.JWT_SECRET || "test-secret"
+        )
+
+        // Attempt signup with duplicate email
         const res = await request(app)
             .post("/api/v1/auth/signup")
-            .send(testUser)
+            .send({
+                ...testUser,
+                emailVerificationToken,
+            })
 
         expect(res.status).toBe(400)
         expect(res.body.message).toBe("User already exists.")

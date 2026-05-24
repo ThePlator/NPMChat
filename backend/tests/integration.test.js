@@ -3,6 +3,7 @@ import request from "supertest"
 import app from "../server.js"
 import User from "../models/User.js"
 import Message from "../models/Message.js"
+import jwt from "jsonwebtoken"
 
 describe("Integration & Concurrency Tests", () => {
     let user1Token = ""
@@ -14,18 +15,28 @@ describe("Integration & Concurrency Tests", () => {
         await User.deleteMany({})
         await Message.deleteMany({})
 
+        const emailVerificationToken1 = jwt.sign(
+            { email: "integration1@example.com", type: "email-verification" },
+            process.env.JWT_SECRET || "test-secret"
+        )
         const res1 = await request(app).post("/api/v1/auth/signup").send({
             email: "integration1@example.com",
             password: "password123",
             name: "Integration One",
+            emailVerificationToken: emailVerificationToken1,
         })
         user1Token = res1.body.token
         user1Id = res1.body.user.id
 
+        const emailVerificationToken2 = jwt.sign(
+            { email: "integration2@example.com", type: "email-verification" },
+            process.env.JWT_SECRET || "test-secret"
+        )
         const res2 = await request(app).post("/api/v1/auth/signup").send({
             email: "integration2@example.com",
             password: "password123",
             name: "Integration Two",
+            emailVerificationToken: emailVerificationToken2,
         })
         user2Token = res2.body.token
         user2Id = res2.body.user.id
