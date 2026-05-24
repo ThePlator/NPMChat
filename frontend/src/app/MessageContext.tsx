@@ -17,6 +17,7 @@ export interface Message { // CHANGED: Added Message interface
   receiverId: string;
   timestamp: string;
   seen: boolean;
+  delivered?: boolean;
   image?: string;
 }
 
@@ -174,15 +175,45 @@ export const MessageProvider = ({
     [messages],
   )
 
-  // Listen for messageSeen socket event to update unseenMessages in real time
+  // Listen for messageSeen and messageDelivered socket events to update ticks in real time
   useEffect(() => {
     if (!socket) return
-    const handleMessageSeen = (data: { userId: string }) => {
+
+    const handleMessageSeen = (data: { userId: string; messageId?: string }) => {
       setUnseenMessages((prev) => ({ ...prev, [data.userId]: 0 }))
+      if (data.messageId) {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg._id === data.messageId
+              ? { ...msg, seen: true, delivered: true }
+              : msg,
+          ),
+        )
+      } else {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.receiverId === data.userId
+              ? { ...msg, seen: true, delivered: true }
+              : msg,
+          ),
+        )
+      }
     }
+
+    const handleMessageDelivered = ({ messageId }: { messageId: string }) => {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg._id === messageId ? { ...msg, delivered: true } : msg,
+        ),
+      )
+    }
+
     socket.on("messageSeen", handleMessageSeen)
+    socket.on("messageDelivered", handleMessageDelivered)
+
     return () => {
       socket.off("messageSeen", handleMessageSeen)
+      socket.off("messageDelivered", handleMessageDelivered)
     }
   }, [socket])
 
@@ -213,6 +244,7 @@ export const MessageProvider = ({
           receiverId: receiverId,
           timestamp: messageData.timestamp || new Date().toISOString(),
           seen: messageData.seen || false,
+          delivered: messageData.delivered || false,
           ...(messageData.image && { image: messageData.image }),
         }
 

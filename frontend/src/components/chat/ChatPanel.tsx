@@ -4,6 +4,27 @@ import { useMessageContext } from "../../app/MessageContext"
 import { useAuth } from "../../app/AuthContext"
 import EmojiPicker from "emoji-picker-react"
 import { ModeToggle } from "../ui/mode-toggle"
+import { Check, CheckCheck } from "lucide-react"
+
+function MessageTick({
+  seen,
+  delivered,
+}: {
+  seen?: boolean
+  delivered?: boolean
+}) {
+  if (seen) {
+    return <CheckCheck size={14} className="text-blue-500" aria-label="Seen" />
+  }
+
+  if (delivered) {
+    return (
+      <CheckCheck size={14} className="text-gray-400" aria-label="Delivered" />
+    )
+  }
+
+  return <Check size={14} className="text-gray-400" aria-label="Sent" />
+}
 
 export default function ChatPanel({
   selectedUser,
@@ -279,6 +300,12 @@ export default function ChatPanel({
                 )}
                 <span className="flex items-center gap-1 text-xs text-gray-500 mt-1 self-end pr-3 pb-1">
                   {time}
+                  {isMe && (
+                    <MessageTick
+                      seen={msg.seen}
+                      delivered={msg.delivered ?? false}
+                    />
+                  )}
                 </span>
               </div>
             </div>
