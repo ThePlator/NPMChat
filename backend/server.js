@@ -76,22 +76,56 @@ export const io = new Server(server, {
     methods: ["GET", "POST"],
     credentials: true,
   },
+  pingTimeout: 60000,
+  pingInterval: 25000,
 })
 
-export const userSocketMap = {}
+export const userSockets = new Map() // userId -> Set<socketId>
+
+// Socket rate limiting: max 20 concurrent connections per IP
+const socketConnectionCounts = new Map()
+
+io.use((socket, next) => {
+  const ip = socket.handshake.address
+  const count = socketConnectionCounts.get(ip) || 0
+
+  if (count >= 20) {
+    return next(new Error("Too many connections from this IP"))
+  }
+
+  socketConnectionCounts.set(ip, count + 1)
+
+  socket.on("disconnect", () => {
+    const curr = socketConnectionCounts.get(ip)
+    if (curr && curr <= 1) {
+      socketConnectionCounts.delete(ip)
+    } else if (curr) {
+      socketConnectionCounts.set(ip, curr - 1)
+    }
+  })
+
+  next()
+})
 
 io.on("connection", async (socket) => {
   const userId = socket.handshake.query.userId
 
   if (userId) {
-    userSocketMap[userId] = socket.id
-    socket.data.username = userId
-    console.log(`User connected: ${userId}`)
+    const userIdStr = userId.toString()
+
+    if (!userSockets.has(userIdStr)) {
+      userSockets.set(userIdStr, new Set())
+    }
+    userSockets.get(userIdStr).add(socket.id)
+    socket.join(userIdStr)
+    socket.data.username = userIdStr
+
+    console.log(`User connected: ${userIdStr} (socket: ${socket.id})`)
 
     // Delivery sweep
     try {
       const undeliveredMessages = await Message.find({
-        receiverId: userId,
+        receiverId: userIdStr,
         delivered: false,
       })
 
@@ -99,12 +133,9 @@ io.on("connection", async (socket) => {
         msg.delivered = true
         await msg.save()
 
-        const senderSocketId = userSocketMap[msg.senderId.toString()]
-        if (senderSocketId) {
-          io.to(senderSocketId).emit("messageDelivered", {
-            messageId: msg._id.toString(),
-          })
-        }
+        io.to(msg.senderId.toString()).emit("messageDelivered", {
+          messageId: msg._id.toString(),
+        })
       }
     } catch (error) {
       console.error("Error during delivery sweep:", error)
@@ -112,17 +143,24 @@ io.on("connection", async (socket) => {
   }
 
   // Register typing indicator handlers
-  registerTypingHandlers(io, socket, userSocketMap)
+  registerTypingHandlers(io, socket, userSockets)
 
-  // Broadcast online users
-  io.emit("getOnlineUsers", Object.keys(userSocketMap))
+  // Broadcast online users (unique user IDs with at least one active socket)
+  io.emit("getOnlineUsers", Array.from(userSockets.keys()))
 
   socket.on("disconnect", () => {
     if (userId) {
-      console.log(`User disconnected: ${userId}`)
-      delete userSocketMap[userId]
+      const userIdStr = userId.toString()
+      const sockets = userSockets.get(userIdStr)
+      if (sockets) {
+        sockets.delete(socket.id)
+        if (sockets.size === 0) {
+          userSockets.delete(userIdStr)
+        }
+      }
+      console.log(`User disconnected: ${userIdStr} (socket: ${socket.id})`)
     }
-    io.emit("getOnlineUsers", Object.keys(userSocketMap))
+    io.emit("getOnlineUsers", Array.from(userSockets.keys()))
   })
 })
 

@@ -1,7 +1,7 @@
 import Message from "../models/Message.js"
 import User from "../models/User.js"
 import cloudinary from "../lib/cloudinary.js"
-import { io, userSocketMap } from "../server.js"
+import { io, userSockets } from "../server.js"
 
 export const getUserForSidebar = async (req, res) => {
   try {
@@ -67,12 +67,9 @@ export const getMessages = async (req, res) => {
     )
 
     if (updateResult.modifiedCount > 0) {
-      const senderSocketId = userSocketMap[userId.toString()]
-      if (senderSocketId) {
-        io.to(senderSocketId).emit("messageSeen", {
-          userId: currentUserId.toString(),
-        })
-      }
+      io.to(userId.toString()).emit("messageSeen", {
+        userId: currentUserId.toString(),
+      })
     }
 
     res.status(200).json(messages)
@@ -112,13 +109,10 @@ export const markMessagesAsSeen = async (req, res) => {
     await message.save()
 
     // Notify the original sender
-    const senderSocketId = userSocketMap[senderId.toString()]
-    if (senderSocketId) {
-      io.to(senderSocketId).emit("messageSeen", {
-        userId: receiverId.toString(),
-        messageId: message._id.toString(),
-      })
-    }
+    io.to(senderId.toString()).emit("messageSeen", {
+      userId: receiverId.toString(),
+      messageId: message._id.toString(),
+    })
 
     res.status(200).json(message)
   } catch (error) {
@@ -140,25 +134,22 @@ export const sendMessage = async (req, res) => {
       imageUrl = uploadedImage.secure_url // Get the secure URL of the uploaded image
     }
 
+    const isReceiverOnline = userSockets.has(receiverId.toString())
+
     const newMessage = await Message.create({
       senderId,
       receiverId,
       text,
       image: imageUrl || "",
+      delivered: isReceiverOnline,
     })
 
-    const receiverSocketId = userSocketMap[receiverId.toString()] // Get the socket ID of the receiver
-    if (receiverSocketId) {
-      newMessage.delivered = true
-      await newMessage.save()
-      io.to(receiverSocketId).emit("newMessage", newMessage) // Emit the new message to the receiver
+    if (isReceiverOnline) {
+      io.to(receiverId.toString()).emit("newMessage", newMessage) // Emit the new message to all receiver sockets
 
-      const senderSocketId = userSocketMap[senderId.toString()]
-      if (senderSocketId) {
-        io.to(senderSocketId).emit("messageDelivered", {
-          messageId: newMessage._id.toString(),
-        })
-      }
+      io.to(senderId.toString()).emit("messageDelivered", {
+        messageId: newMessage._id.toString(),
+      })
     }
 
     res.status(201).json({

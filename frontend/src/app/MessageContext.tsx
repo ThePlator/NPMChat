@@ -302,11 +302,6 @@ export const MessageProvider = ({
         }
 
         setMessages((msgs: Message[]) => [...msgs, newMessage]) // CHANGED: Use Message[] instead of any[]
-
-        // Also emit via socket for real-time
-        if (socket) {
-          socket.emit("send-message", newMessage)
-        }
       } catch (err: any) {
         setError(err.message || "Failed to send message")
       }
