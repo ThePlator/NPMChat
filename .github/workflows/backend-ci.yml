@@ -54,7 +54,9 @@ jobs:
             sleep 2
           done
           echo " Server failed to respond successfully within time limit"
-          docker logs npmchat-test
+          if [ "$(docker ps -a -q -f name=npmchat-test)" ]; then
+            docker logs npmchat-test
+          fi
           exit 1
 
       - name: Verify server runtime metadata
@@ -66,9 +68,17 @@ jobs:
           echo " Server is running in development mode and returning rich runtime metadata"
 
       - name: Print container logs (debug)
-        if: always()
-        run: docker logs npmchat-test
+        if: failure()
+        run: |
+          if [ "$(docker ps -a -q -f name=npmchat-test)" ]; then
+            docker logs npmchat-test
+          else
+            echo "Container npmchat-test does not exist."
+          fi
 
       - name: Cleanup
         if: always()
-        run: docker rm -f npmchat-test
+        run: |
+          if [ "$(docker ps -a -q -f name=npmchat-test)" ]; then
+            docker rm -f npmchat-test
+          fi

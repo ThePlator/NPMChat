@@ -4,6 +4,7 @@ import cors from "cors"
 import http from "http"
 import helmet from "helmet"
 import rateLimit from "express-rate-limit"
+import Message from "./models/Message.js"
 import { connectDB } from "./lib/db.js"
 import userRouter from "./routes/user.routes.js"
 import messageRouter from "./routes/message.routes.js"
@@ -76,12 +77,34 @@ export const io = new Server(server, {
 
 export const userSocketMap = {}
 
-io.on("connection", (socket) => {
+io.on("connection", async (socket) => {
   const userId = socket.handshake.query.userId
 
   if (userId) {
     userSocketMap[userId] = socket.id
     console.log(`User connected: ${userId}`)
+
+    // Delivery sweep
+    try {
+      const undeliveredMessages = await Message.find({
+        receiverId: userId,
+        delivered: false,
+      })
+
+      for (const msg of undeliveredMessages) {
+        msg.delivered = true
+        await msg.save()
+
+        const senderSocketId = userSocketMap[msg.senderId.toString()]
+        if (senderSocketId) {
+          io.to(senderSocketId).emit("messageDelivered", {
+            messageId: msg._id.toString(),
+          })
+        }
+      }
+    } catch (error) {
+      console.error("Error during delivery sweep:", error)
+    }
   }
 
   // Broadcast online users

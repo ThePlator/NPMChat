@@ -22,6 +22,10 @@ const messageSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    delivered: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true, optimisticConcurrency: true },
 )

@@ -144,6 +144,14 @@ function LoginPageContent() {
             Don't have an account? Sign up
           </Link>
         </div>
+        <div className="text-center">
+          <Link
+            href="/forgot-password"
+            className="underline text-black font-bold cursor-[url('/custom-cursor-click.svg'),_pointer] hover:text-[${accent}]"
+          >
+            Forgot password?
+          </Link>
+        </div>
       </form>
       {/* Floating accent shape bottom left */}
       <div className="absolute bottom-0 left-0 w-32 h-32 bg-[#b39ddb] border-2 border-black rotate-12 opacity-50 z-0"></div>
