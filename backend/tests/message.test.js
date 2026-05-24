@@ -78,4 +78,12 @@ describe("Message Routes", () => {
         expect(res.status).toBe(200)
         expect(res.body.seen).toBe(true)
     })
+
+    it("PUT /api/v1/messages/mark-as-seen/:messageId - should handle already seen message gracefully", async () => {
+        const res = await request(app)
+            .put(`/api/v1/messages/mark-as-seen/${messageId}`)
+            .set("Authorization", `Bearer ${user2Token}`)
+
+        expect(res.status).toBe(200)
+    })
 })
