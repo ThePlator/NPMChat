@@ -22,6 +22,20 @@ const messageSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    isEdited: {
+      type: Boolean,
+      default: false,
+    },
+    deleted: {
+      type: Boolean,
+      default: false,
+    },
+    editedAt: {
+      type: Date,
+    },
+    deletedAt: {
+      type: Date,
+    },
     delivered: {
       type: Boolean,
       default: false,
