@@ -106,7 +106,16 @@ export const markMessagesAsSeen = async (req, res) => {
     const senderId = message.senderId
 
     message.seen = true
-    await message.save()
+    try {
+      await message.save()
+    } catch (saveErr) {
+      if (saveErr.name === "VersionError") {
+        // Message was concurrently modified, fetch latest and return
+        const updated = await Message.findById(message._id)
+        return res.status(200).json(updated)
+      }
+      throw saveErr
+    }
 
     // Notify the original sender
     io.to(senderId.toString()).emit("messageSeen", {

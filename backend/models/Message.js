@@ -27,7 +27,7 @@ const messageSchema = new mongoose.Schema(
       default: false,
     },
   },
-  { timestamps: true },
+  { timestamps: true, optimisticConcurrency: true },
 )
 
 const Message = mongoose.model("Message", messageSchema)

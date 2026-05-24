@@ -130,12 +130,19 @@ io.on("connection", async (socket) => {
       })
 
       for (const msg of undeliveredMessages) {
-        msg.delivered = true
-        await msg.save()
+        try {
+          msg.delivered = true
+          await msg.save()
 
-        io.to(msg.senderId.toString()).emit("messageDelivered", {
-          messageId: msg._id.toString(),
-        })
+          io.to(msg.senderId.toString()).emit("messageDelivered", {
+            messageId: msg._id.toString(),
+          })
+        } catch (saveErr) {
+          if (saveErr.name === "VersionError") {
+            continue
+          }
+          throw saveErr
+        }
       }
     } catch (error) {
       console.error("Error during delivery sweep:", error)
