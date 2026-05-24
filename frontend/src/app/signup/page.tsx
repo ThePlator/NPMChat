@@ -37,8 +37,11 @@ function SignupPageContent() {
   const [verifyingOtp, setVerifyingOtp] = useState(false)
   const [hidePassword, setHidePassword] = useState(true)
 
-  // Recaptcha state
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  // Recatcha state
+  const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY
+  const [captchaToken, setCaptchaToken] = useState<string | null>(
+    recaptchaSiteKey ? null : "bypassed",
+  )
 
   // Handle Resend Cooldown Countdown
   useEffect(() => {
@@ -64,9 +67,7 @@ function SignupPageContent() {
     const errs = validate()
     setErrors(errs)
     if (Object.keys(errs).length) return
-    
-    // In production, require recaptcha
-    if (!captchaToken && process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY) {
+    if (recaptchaSiteKey && !captchaToken) {
       toast.error("Please complete CAPTCHA verification")
       return
     }
@@ -257,12 +258,34 @@ function SignupPageContent() {
               />
             </div>
           )}
-
-          <button
-            type="submit"
-            disabled={sendingOtp}
-            className="mt-2 border-2 border-black bg-[#39ff14] text-black font-extrabold text-lg py-2 rounded-none transition-all cursor-[url('/custom-cursor-click.svg'),_pointer] hover:bg-[#b39ddb] hover:text-white focus:outline-none disabled:opacity-50"
-            style={{ boxShadow: `4px 4px 0 0 ${accentGreen}` }}
+          {errors.password && (
+            <span className="text-red-600 text-sm font-normal">
+              {errors.password}
+            </span>
+          )}
+        </label>
+        {recaptchaSiteKey && (
+          <div className="flex justify-center">
+            <ReCAPTCHA
+              sitekey={recaptchaSiteKey}
+              onChange={(token: string | null) =>
+                setCaptchaToken(token)
+              }
+            />
+          </div>
+        )}
+        <button
+          type="submit"
+          disabled={loading}
+          className="mt-2 border-2 border-black bg-[#39ff14] text-black font-extrabold text-lg py-2 rounded-none transition-all cursor-[url('/custom-cursor-click.svg'),_pointer] hover:bg-[#b39ddb] hover:text-white focus:outline-none"
+          style={{ boxShadow: `4px 4px 0 0 ${accentGreen}` }}
+        >
+          {loading ? "Signing Up..." : "Sign Up 2"}
+        </button>
+        <div className="text-center mt-2">
+          <Link
+            href="/login"
+            className="underline text-black font-bold cursor-[url('/custom-cursor-click.svg'),_pointer] hover:text-[${accent}]"
           >
             {sendingOtp ? "Requesting OTP..." : "Verify Email"}
           </button>

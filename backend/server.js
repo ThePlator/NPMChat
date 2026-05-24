@@ -10,6 +10,7 @@ import userRouter from "./routes/user.routes.js"
 import messageRouter from "./routes/message.routes.js"
 import { Server } from "socket.io"
 import { isVercel, parsePort, getPlatform } from "./lib/runtime.js"
+import { registerTypingHandlers } from "./typingHandler.js"
 
 const app = express()
 const server = http.createServer(app)
@@ -29,7 +30,9 @@ const standardLimiter = rateLimit({
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 20, // Stricter limit for auth/login routes
-  message: { error: "Too many authentication attempts, please try again later." },
+  message: {
+    error: "Too many authentication attempts, please try again later.",
+  },
   standardHeaders: true,
   legacyHeaders: false,
 })
@@ -40,7 +43,7 @@ const allowedOrigins = [
   // Add localhost for local development
   "http://localhost:3000",
   "http://localhost:5173", // Common Vite port, just in case
-  "https://npm-chat-fxjq.vercel.app"
+  "https://npm-chat-fxjq.vercel.app",
 ].filter(Boolean)
 
 if (!CLIENT_URL && NODE_ENV === "production") {
@@ -73,33 +76,72 @@ export const io = new Server(server, {
     methods: ["GET", "POST"],
     credentials: true,
   },
+  pingTimeout: 60000,
+  pingInterval: 25000,
 })
 
-export const userSocketMap = {}
+export const userSockets = new Map() // userId -> Set<socketId>
+
+// Socket rate limiting: max 20 concurrent connections per IP
+const socketConnectionCounts = new Map()
+
+io.use((socket, next) => {
+  const ip = socket.handshake.address
+  const count = socketConnectionCounts.get(ip) || 0
+
+  if (count >= 20) {
+    return next(new Error("Too many connections from this IP"))
+  }
+
+  socketConnectionCounts.set(ip, count + 1)
+
+  socket.on("disconnect", () => {
+    const curr = socketConnectionCounts.get(ip)
+    if (curr && curr <= 1) {
+      socketConnectionCounts.delete(ip)
+    } else if (curr) {
+      socketConnectionCounts.set(ip, curr - 1)
+    }
+  })
+
+  next()
+})
 
 io.on("connection", async (socket) => {
   const userId = socket.handshake.query.userId
 
   if (userId) {
-    userSocketMap[userId] = socket.id
-    console.log(`User connected: ${userId}`)
+    const userIdStr = userId.toString()
+
+    if (!userSockets.has(userIdStr)) {
+      userSockets.set(userIdStr, new Set())
+    }
+    userSockets.get(userIdStr).add(socket.id)
+    socket.join(userIdStr)
+    socket.data.username = userIdStr
+
+    console.log(`User connected: ${userIdStr} (socket: ${socket.id})`)
 
     // Delivery sweep
     try {
       const undeliveredMessages = await Message.find({
-        receiverId: userId,
+        receiverId: userIdStr,
         delivered: false,
       })
 
       for (const msg of undeliveredMessages) {
-        msg.delivered = true
-        await msg.save()
+        try {
+          msg.delivered = true
+          await msg.save()
 
-        const senderSocketId = userSocketMap[msg.senderId.toString()]
-        if (senderSocketId) {
-          io.to(senderSocketId).emit("messageDelivered", {
+          io.to(msg.senderId.toString()).emit("messageDelivered", {
             messageId: msg._id.toString(),
           })
+        } catch (saveErr) {
+          if (saveErr.name === "VersionError") {
+            continue
+          }
+          throw saveErr
         }
       }
     } catch (error) {
@@ -107,15 +149,25 @@ io.on("connection", async (socket) => {
     }
   }
 
-  // Broadcast online users
-  io.emit("getOnlineUsers", Object.keys(userSocketMap))
+  // Register typing indicator handlers
+  registerTypingHandlers(io, socket, userSockets)
+
+  // Broadcast online users (unique user IDs with at least one active socket)
+  io.emit("getOnlineUsers", Array.from(userSockets.keys()))
 
   socket.on("disconnect", () => {
     if (userId) {
-      console.log(`User disconnected: ${userId}`)
-      delete userSocketMap[userId]
+      const userIdStr = userId.toString()
+      const sockets = userSockets.get(userIdStr)
+      if (sockets) {
+        sockets.delete(socket.id)
+        if (sockets.size === 0) {
+          userSockets.delete(userIdStr)
+        }
+      }
+      console.log(`User disconnected: ${userIdStr} (socket: ${socket.id})`)
     }
-    io.emit("getOnlineUsers", Object.keys(userSocketMap))
+    io.emit("getOnlineUsers", Array.from(userSockets.keys()))
   })
 })
 
@@ -150,20 +202,26 @@ app.use("/", (req, res) => {
 
 // 5. Database Connection
 if (process.env.NODE_ENV !== "test") {
-  connectDB().then(() => {
-    console.log("Connected to DB");
-  }).catch(err => {
-    console.error("DB Connection Failed", err);
-  });
+  connectDB()
+    .then(() => {
+      console.log("Connected to DB")
+    })
+    .catch((err) => {
+      console.error("DB Connection Failed", err)
+    })
 }
 if (isVercel()) {
-  console.log("Running in Vercel Serverless environment. Skipping server.listen() and exporting Express app.");
+  console.log(
+    "Running in Vercel Serverless environment. Skipping server.listen() and exporting Express app.",
+  )
 } else if (process.env.NODE_ENV !== "test") {
-  const port = parsePort(process.env.PORT || 8080);
+  const port = parsePort(process.env.PORT || 8080)
   server.listen(port, "0.0.0.0", () => {
-    console.log(`Server is running on port ${port} in ${getPlatform()} environment`);
-    console.log(`CORS allowed origins: ${allowedOrigins.join(", ")}`);
-  });
+    console.log(
+      `Server is running on port ${port} in ${getPlatform()} environment`,
+    )
+    console.log(`CORS allowed origins: ${allowedOrigins.join(", ")}`)
+  })
 }
 
 // Export for potential use in integration tests (e.g., supertest)
