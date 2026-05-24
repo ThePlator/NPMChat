@@ -3,6 +3,8 @@ import React, { useRef, useEffect, useState } from "react"
 import { useMessageContext } from "../../app/MessageContext"
 import { useAuth } from "../../app/AuthContext"
 import { getInitials } from "../../lib/utils"
+import { useTypingIndicator } from "../useTypingIndicator"
+import { TypingIndicator } from "./TypingIndicator"
 
 import EmojiPicker from "emoji-picker-react"
 import { ModeToggle } from "../ui/mode-toggle"
@@ -47,10 +49,16 @@ export default function ChatPanel({
   const [input, setInput] = useState("")
   const messageEndRef = useRef<HTMLDivElement | null>(null)
   const currentUserId = user?.id
+  const currentUsername = user?.name || ""
   const [showEmoji, setShowEmoji] = useState(false)
   const [image, setImage] = useState<string | null>(null)
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null)
   const [showUserDetails, setShowUserDetails] = useState(false)
+
+  const { typingUsers, handleTyping } = useTypingIndicator(
+    selectedUser?._id || "",
+    currentUsername,
+  )
 
   useEffect(() => {
     messageEndRef.current?.scrollIntoView({ behavior: "auto" })
@@ -325,74 +333,79 @@ export default function ChatPanel({
       </div>
       {/* Input */}
       <form
-        className="flex items-center gap-2 border-t-2 border-sidebar-border  px-2 py-2 bg-background sticky bottom-0 z-10 relative"
+        className="flex flex-col gap-0 border-t-2 border-sidebar-border  px-2 py-2 bg-background sticky bottom-0 z-10 relative"
         onSubmit={(e) => {
           e.preventDefault()
           handleSend()
         }}
       >
-        <button
-          type="button"
-          className="px-2 py-2 text-xl border-2 border-sidebar-border  rounded-full bg-accent  hover:bg-[#b39ddb]"
-          onClick={() => setShowEmoji((v) => !v)}
-          aria-label="Add emoji"
-        >
-          😊
-        </button>
-        {showEmoji && (
-          <div className="absolute bottom-14 left-0 z-50">
-            <EmojiPicker
-              onEmojiClick={(emojiData) => {
-                setInput((prev) => prev + emojiData.emoji)
-                setShowEmoji(false)
-              }}
+        {/* Typing Indicator */}
+        <TypingIndicator typingUsers={typingUsers} />
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="px-2 py-2 text-xl border-2 border-sidebar-border  rounded-full bg-accent  hover:bg-[#b39ddb]"
+            onClick={() => setShowEmoji((v) => !v)}
+            aria-label="Add emoji"
+          >
+            😊
+          </button>
+          {showEmoji && (
+            <div className="absolute bottom-14 left-0 z-50">
+              <EmojiPicker
+                onEmojiClick={(emojiData) => {
+                  setInput((prev) => prev + emojiData.emoji)
+                  setShowEmoji(false)
+                }}
+              />
+            </div>
+          )}
+          <label
+            className="px-2 py-2 cursor-pointer border-2 border-sidebar-border rounded-full bg-accent hover:bg-[#b39ddb] flex items-center justify-center"
+            title="Attach image"
+          >
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleImageChange}
             />
-          </div>
-        )}
-        <label
-          className="px-2 py-2 cursor-pointer border-2 border-sidebar-border rounded-full bg-accent hover:bg-[#b39ddb] flex items-center justify-center"
-          title="Attach image"
-        >
+            <span role="img" aria-label="Attach">
+              📎
+            </span>
+          </label>
+          {image && (
+            <div className="relative flex items-center">
+              <img
+                src={image}
+                alt="preview"
+                className="w-12 h-12 object-cover rounded border-2 border-sidebar-border  mr-2"
+              />
+              <button
+                type="button"
+                className="absolute top-0 right-0 bg-white border border-sidebar-border  rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                onClick={() => setImage(null)}
+                aria-label="Remove image"
+              >
+                ×
+              </button>
+            </div>
+          )}
           <input
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleImageChange}
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleTyping}
+            placeholder="Type a message..."
+            className="flex-1 px-3 py-2 border-2 border-sidebar-border  rounded-full font-medium text-base bg-[#f3e8ff] dark:bg-accent text-primary focus:bg-white focus:outline-none focus:border-[#39ff14] placeholder:text-gray-400"
           />
-          <span role="img" aria-label="Attach">
-            📎
-          </span>
-        </label>
-        {image && (
-          <div className="relative flex items-center">
-            <img
-              src={image}
-              alt="preview"
-              className="w-12 h-12 object-cover rounded border-2 border-sidebar-border  mr-2"
-            />
-            <button
-              type="button"
-              className="absolute top-0 right-0 bg-white border border-sidebar-border  rounded-full w-5 h-5 flex items-center justify-center text-xs"
-              onClick={() => setImage(null)}
-              aria-label="Remove image"
-            >
-              ×
-            </button>
-          </div>
-        )}
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Type a message..."
-          className="flex-1 px-3 py-2 border-2 border-sidebar-border  rounded-full font-medium text-base bg-[#f3e8ff] dark:bg-accent text-primary focus:bg-white focus:outline-none focus:border-[#39ff14] placeholder:text-gray-400"
-        />
-        <button
-          type="submit"
-          className="px-4 py-2 bg-[#39ff14] text-black text-base font-bold rounded-full border-2 border-sidebar-border  transition-all duration-100 hover:bg-[#b39ddb] hover:text-white hover:scale-105 shadow-sm"
-        >
-          Send
-        </button>
+          <button
+            type="submit"
+            className="px-4 py-2 bg-[#39ff14] text-black text-base font-bold rounded-full border-2 border-sidebar-border  transition-all duration-100 hover:bg-[#b39ddb] hover:text-white hover:scale-105 shadow-sm"
+          >
+            Send
+          </button>
+        </div>
       </form>
       {loadingMessages && (
         <div className="p-4 text-center">Loading messages...</div>
