@@ -25,7 +25,10 @@ function LoginPageContent() {
   const [hidePassword, setHidePassword] = useState(true)
 
   // Recaptcha State
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY
+  const [captchaToken, setCaptchaToken] = useState<string | null>(
+    recaptchaSiteKey ? null : "bypassed",
+  )
 
   function validate() {
     const errs: typeof errors = {}
@@ -40,7 +43,7 @@ function LoginPageContent() {
     const errs = validate()
     setErrors(errs)
     if (Object.keys(errs).length) return
-    if (!captchaToken) {
+    if (recaptchaSiteKey && !captchaToken) {
       toast.error("Please complete CAPTCHA verification")
       return
     }
@@ -120,14 +123,16 @@ function LoginPageContent() {
             </span>
           )}
         </label>
-        <div className="flex justify-center">
-          <ReCAPTCHA
-            sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!}
-            onChange={(token: string | null) =>
-              setCaptchaToken(token)
-            }
-          />
-        </div>
+        {recaptchaSiteKey && (
+          <div className="flex justify-center">
+            <ReCAPTCHA
+              sitekey={recaptchaSiteKey}
+              onChange={(token: string | null) =>
+                setCaptchaToken(token)
+              }
+            />
+          </div>
+        )}
         <button
           type="submit"
           disabled={loading}
