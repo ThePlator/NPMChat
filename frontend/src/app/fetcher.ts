@@ -19,49 +19,96 @@ const BASES = {
 
 
 let token: string | null = null
+type RefreshListener = (newToken: string) => void
+const listeners: RefreshListener[] = []
+
+export function addTokenRefreshListener(cb: RefreshListener) {
+  listeners.push(cb)
+}
 
 export function setToken(newToken: string | null) {
   token = newToken
-  if (typeof window !== "undefined") {
-    if (newToken) localStorage.setItem("token", newToken)
-    else localStorage.removeItem("token")
+  if (newToken) {
+    listeners.forEach((cb) => cb(newToken))
   }
 }
 
 export function getToken() {
-  if (token) return token
-  if (typeof window !== "undefined") {
-    token = localStorage.getItem("token")
-    return token
-  }
-  return null
+  return token
 }
+
+// Singleton promise for handling multiple concurrent refresh triggers
+let refreshPromise: Promise<string | null> | null = null
 
 async function fetcher(
   path: string,
   options: RequestInit = {},
   base: "auth" | "messages" = "messages",
-) {
-  console.log(path)
-
+  isRetry = false
+): Promise<any> {
   const headers: any = {
     "Content-Type": "application/json",
     ...(options.headers || {}),
   }
+  
   const t = getToken()
   if (t) headers["Authorization"] = `Bearer ${t}`
-  const res = await fetch(`${BASES[base]}${path}`, { ...options, headers })
-  console.log(`${BASES[base]}${path}`)
+  
+  // Always include credentials for cookies (refresh token)
+  const fetchOptions: RequestInit = {
+    ...options,
+    headers,
+    credentials: "include"
+  }
+
+  const res = await fetch(`${BASES[base]}${path}`, fetchOptions)
+  
   let data
   try {
     data = await res.json()
   } catch {
     data = {}
   }
+
   if (!res.ok) {
+    // If token expired, try to refresh
+    if (res.status === 401 && data.code === "TOKEN_EXPIRED" && !isRetry && !(base === "auth" && path === "/refresh")) {
+      if (!refreshPromise) {
+        refreshPromise = (async () => {
+          try {
+            const refreshRes = await fetch(`${BASES.auth}/refresh`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include"
+            })
+            
+            if (refreshRes.ok) {
+              const refreshData = await refreshRes.json()
+              const newToken = refreshData.token
+              setToken(newToken)
+              return newToken
+            }
+            return null
+          } catch (refreshErr) {
+            console.error("Token refresh failed", refreshErr)
+            return null
+          } finally {
+            refreshPromise = null
+          }
+        })()
+      }
+
+      const refreshedToken = await refreshPromise
+      if (refreshedToken) {
+        // Retry original request with NEW token
+        return fetcher(path, options, base, true)
+      }
+    }
+
     const errorMsg = data?.message || res.statusText || "API Error"
     const error = new Error(errorMsg)
     ;(error as any).data = data
+    ;(error as any).status = res.status
     throw error
   }
   return data

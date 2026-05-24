@@ -5,7 +5,7 @@ import React, {
   useEffect,
   useCallback,
 } from "react"
-import { api } from "./fetcher"
+import { api, getToken, addTokenRefreshListener } from "./fetcher"
 import { io, Socket } from "socket.io-client"
 import { User } from "./AuthContext" // CHANGED: imported User interface
 import { toast } from "sonner" // ADDED: sonner for notifications
@@ -97,17 +97,17 @@ export const MessageProvider = ({
     }
 
     const resolvedUrl = apiUrl || "http://localhost:8080"
+    const token = getToken()
 
     const socket = io(resolvedUrl, {
       transports: ["polling", "websocket"],
-      query: { userId },
+      auth: { token },
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 2000,
     })
 
     socket.on("connect", () => {
-      console.log("WebSocket connected successfully")
       setSocketConnected(true)
       setSocketError(null)
 
@@ -146,6 +146,18 @@ export const MessageProvider = ({
       socket.disconnect()
     }
   }, [currentUser])
+
+  // Sync socket with new tokens
+  useEffect(() => {
+    if (!socket) return
+    const handleTokenRefresh = (newToken: string) => {
+      socket.auth = { ...socket.auth, token: newToken }
+      if (socket.connected) {
+        socket.disconnect().connect()
+      }
+    }
+    addTokenRefreshListener(handleTokenRefresh)
+  }, [socket])
 
   // helper to update the online statuses
   const applyOnlineStatus = useCallback(

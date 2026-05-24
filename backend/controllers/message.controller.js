@@ -8,7 +8,9 @@ export const getUserForSidebar = async (req, res) => {
     const userId = req.user._id // Get the user ID from the request object
 
     const [filteredUser, unseenMessageCounts] = await Promise.all([
-      User.find({ _id: { $ne: userId } }).select("-password").lean(),
+      User.find({ _id: { $ne: userId } })
+        .select("-password -refreshTokenHash -refreshTokenId")
+        .lean(),
       Message.aggregate([
         {
           $match: {

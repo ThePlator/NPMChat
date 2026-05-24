@@ -24,6 +24,12 @@ const userSchema = new mongoose.Schema(
     bio: {
       type: String,
     },
+    refreshTokenHash: {
+      type: String,
+    },
+    refreshTokenId: {
+      type: String,
+    },
   },
   { timestamps: true },
 )

@@ -4,6 +4,8 @@ import {
   login,
   signup,
   updateProfile,
+  refresh,
+  logout,
 } from "../controllers/user.controller.js"
 import { protectRoute } from "../middleware/auth.js"
 import { validateBody } from "../middleware/validate.middleware.js"
@@ -13,6 +15,8 @@ const userRouter = express.Router()
 
 userRouter.post("/signup", validateBody(signupSchema), signup)
 userRouter.post("/login", validateBody(loginSchema), login)
+userRouter.post("/refresh", refresh)
+userRouter.post("/logout", logout)
 userRouter.get("/check-auth", protectRoute, checkAuth)
 userRouter.put("/update-profile", protectRoute, updateProfile)
 

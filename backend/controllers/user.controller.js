@@ -1,14 +1,31 @@
 import User from "../models/User.js"
-import { generateToken } from "../lib/utils.js"
+import { generateAccessToken, generateRefreshToken, generateRefreshTokenId } from "../lib/utils.js"
 import bcrypt from "bcryptjs"
 import cloudinary from "../lib/cloudinary.js"
 import { verifyRecaptcha } from "../lib/verifyRecaptcha.js"
 
+const COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  path: "/api/v1/auth",
+}
+
+const setAuthCookies = (res, refreshToken, refreshTokenId) => {
+  res.cookie("refreshToken", refreshToken, COOKIE_OPTIONS)
+  res.cookie("refreshTokenId", refreshTokenId, COOKIE_OPTIONS)
+}
+
+const clearAuthCookies = (res) => {
+  res.clearCookie("refreshToken", COOKIE_OPTIONS)
+  res.clearCookie("refreshTokenId", COOKIE_OPTIONS)
+}
+
 export const signup = async (req, res) => {
-  const { email, password, name, avatarUrl, bio, captchaToken } = req.body // CHANGED: Standardize on avatarUrl instead of profilPic
+  const { email, password, name, avatarUrl, bio, captchaToken } = req.body
 
   try {
-    // Validate input
     if (!email || !password || !name) {
       return res
         .status(400)
@@ -29,29 +46,33 @@ export const signup = async (req, res) => {
       })
     }
 
-    // Check if user already exists
     const existingUser = await User.findOne({ email })
     if (existingUser) {
       return res.status(400).json({ message: "User already exists." })
     }
 
     const salt = await bcrypt.genSalt(10)
-    // Hash the password
     const hashedPassword = await bcrypt.hash(password, salt)
 
-    // Create new user
+    const refreshToken = generateRefreshToken()
+    const refreshTokenId = generateRefreshTokenId()
+    const refreshTokenHash = await bcrypt.hash(refreshToken, 10)
+
     const newUser = new User({
       email,
       password: hashedPassword,
       name,
-      avatarUrl: avatarUrl || "", // CHANGED: Standardize on avatarUrl instead of profilPic
-      bio: bio || "", // Default to empty string if not provided
+      avatarUrl: avatarUrl || "",
+      bio: bio || "",
+      refreshTokenHash,
+      refreshTokenId,
     })
 
     await newUser.save()
 
-    // Generate token
-    const token = generateToken(newUser._id)
+    const accessToken = generateAccessToken(newUser._id)
+
+    setAuthCookies(res, refreshToken, refreshTokenId)
 
     res.status(201).json({
       message: "User created successfully.",
@@ -62,7 +83,7 @@ export const signup = async (req, res) => {
         avatarUrl: newUser.avatarUrl,
         bio: newUser.bio,
       },
-      token,
+      token: accessToken,
     })
   } catch (error) {
     console.error("Error during signup:", error)
@@ -74,7 +95,6 @@ export const login = async (req, res) => {
   const { email, password, captchaToken } = req.body
 
   try {
-    // Validate input
     if (!email || !password) {
       return res
         .status(400)
@@ -95,20 +115,25 @@ export const login = async (req, res) => {
       })
     }
 
-    // Find user by email
     const user = await User.findOne({ email })
     if (!user) {
       return res.status(400).json({ message: "Invalid email or password." })
     }
 
-    // Check password
     const isMatch = await bcrypt.compare(password, user.password)
     if (!isMatch) {
       return res.status(400).json({ message: "Invalid email or password." })
     }
 
-    // Generate token
-    const token = generateToken(user._id)
+    const refreshToken = generateRefreshToken()
+    const refreshTokenId = generateRefreshTokenId()
+    user.refreshTokenHash = await bcrypt.hash(refreshToken, 10)
+    user.refreshTokenId = refreshTokenId
+    await user.save()
+
+    const accessToken = generateAccessToken(user._id)
+
+    setAuthCookies(res, refreshToken, refreshTokenId)
 
     res.status(200).json({
       message: "Login successful.",
@@ -119,10 +144,74 @@ export const login = async (req, res) => {
         avatarUrl: user.avatarUrl,
         bio: user.bio,
       },
-      token,
+      token: accessToken,
     })
   } catch (error) {
     console.error("Error during login:", error)
+    res.status(500).json({ message: "Internal server error." })
+  }
+}
+
+export const refresh = async (req, res) => {
+  const { refreshToken, refreshTokenId } = req.cookies
+
+  if (!refreshToken || !refreshTokenId) {
+    return res.status(401).json({ message: "Session expired or invalid" })
+  }
+
+  try {
+    const user = await User.findOne({ refreshTokenId })
+    if (!user || !user.refreshTokenHash) {
+      return res.status(401).json({ message: "Invalid session" })
+    }
+
+    const isMatch = await bcrypt.compare(refreshToken, user.refreshTokenHash)
+    if (!isMatch) {
+      // Security: if token ID matches but hash doesn't, someone might be reusing an old token
+      // In a strict rotation policy, we could invalidate all sessions for this user.
+      // For now, just clear this one.
+      user.refreshTokenHash = null
+      user.refreshTokenId = null
+      await user.save()
+      clearAuthCookies(res)
+      return res.status(401).json({ message: "Invalid refresh token" })
+    }
+
+    // Token Rotation
+    const newRefreshToken = generateRefreshToken()
+    const newRefreshTokenId = generateRefreshTokenId()
+    
+    user.refreshTokenHash = await bcrypt.hash(newRefreshToken, 10)
+    user.refreshTokenId = newRefreshTokenId
+    await user.save()
+
+    const accessToken = generateAccessToken(user._id)
+
+    setAuthCookies(res, newRefreshToken, newRefreshTokenId)
+
+    res.status(200).json({
+      token: accessToken,
+    })
+  } catch (error) {
+    console.error("Error during refresh:", error)
+    res.status(500).json({ message: "Internal server error." })
+  }
+}
+
+export const logout = async (req, res) => {
+  try {
+    const { refreshTokenId } = req.cookies
+    if (refreshTokenId) {
+      await User.findOneAndUpdate(
+        { refreshTokenId },
+        { refreshTokenHash: null, refreshTokenId: null }
+      )
+    }
+    
+    clearAuthCookies(res)
+    res.status(200).json({ message: "Logged out successfully" })
+  } catch (error) {
+    console.error("Error during logout:", error)
     res.status(500).json({ message: "Internal server error." })
   }
 }
@@ -148,10 +237,9 @@ export const checkAuth = (req, res) => {
   }
 }
 
-// Controller to update user profile
 export const updateProfile = async (req, res) => {
   const { name, avatarUrl, bio } = req.body
-  const userId = req.user._id // Assuming user ID is available in req.user
+  const userId = req.user._id
   let updatedData
 
   try {
