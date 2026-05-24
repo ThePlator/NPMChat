@@ -155,13 +155,18 @@ export const sendMessage = async (req, res) => {
       delivered: isReceiverOnline,
     })
 
-    if (isReceiverOnline) {
-      io.to(receiverId.toString()).emit("newMessage", newMessage) // Emit the new message to all receiver sockets
+    io.to(receiverId.toString()).emit(
+      "newMessage",
+      newMessage,
+    )
 
-      io.to(senderId.toString()).emit("messageDelivered", {
-        messageId: newMessage._id.toString(),
-      })
-    }
+    io.to(senderId.toString()).emit(
+      "messageDelivered",
+      {
+        messageId:
+          newMessage._id.toString(),
+      },
+    )
 
     res.status(201).json({
       message: "Message sent successfully.",
@@ -206,14 +211,24 @@ export const editMessage = async (req, res) => {
     await message.save()
 
     const receiverSocketId =
-      userSocketMap[message.receiverId]
-
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit(
-        "messageEdited",
-        message,
+      userSockets.get(
+        message.receiverId.toString(),
       )
-    }
+
+    const senderSocketId =
+      userSockets.get(
+        message.senderId.toString(),
+      )
+
+    io.to(message.receiverId.toString()).emit(
+      "messageEdited",
+      message,
+    )
+
+    io.to(message.senderId.toString()).emit(
+      "messageEdited",
+      message,
+    )
 
     res.status(200).json({
       message: "Message edited successfully.",
@@ -253,14 +268,24 @@ export const deleteMessage = async (req, res) => {
     await message.save()
 
     const receiverSocketId =
-      userSocketMap[message.receiverId]
-
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit(
-        "messageDeleted",
-        message,
+      userSockets.get(
+        message.receiverId.toString(),
       )
-    }
+
+    const senderSocketId =
+      userSockets.get(
+        message.senderId.toString(),
+      )
+
+    io.to(message.receiverId.toString()).emit(
+      "messageDeleted",
+      message,
+    )
+
+    io.to(message.senderId.toString()).emit(
+      "messageDeleted",
+      message,
+    )
 
     res.status(200).json({
       message: "Message deleted successfully.",
