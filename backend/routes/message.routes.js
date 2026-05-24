@@ -5,6 +5,8 @@ import {
   getUserForSidebar,
   markMessagesAsSeen,
   sendMessage,
+  editMessage,
+  deleteMessage
 } from "../controllers/message.controller.js"
 
 const messageRouter = express.Router()
@@ -123,5 +125,7 @@ messageRouter.put("/mark-as-seen/:messageId", protectRoute, markMessagesAsSeen)
  *         description: Internal server error
  */
 messageRouter.post("/send/:receiverId", protectRoute, sendMessage)
+messageRouter.put("/edit/:messageId", protectRoute, editMessage)
+messageRouter.delete("/delete/:messageId", protectRoute, deleteMessage)
 
 export default messageRouter
