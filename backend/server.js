@@ -10,6 +10,7 @@ import userRouter from "./routes/user.routes.js"
 import messageRouter from "./routes/message.routes.js"
 import { Server } from "socket.io"
 import { isVercel, parsePort, getPlatform } from "./lib/runtime.js"
+import { registerTypingHandlers } from "./typingHandler.js"
 
 const app = express()
 const server = http.createServer(app)
@@ -29,7 +30,9 @@ const standardLimiter = rateLimit({
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 20, // Stricter limit for auth/login routes
-  message: { error: "Too many authentication attempts, please try again later." },
+  message: {
+    error: "Too many authentication attempts, please try again later.",
+  },
   standardHeaders: true,
   legacyHeaders: false,
 })
@@ -40,7 +43,7 @@ const allowedOrigins = [
   // Add localhost for local development
   "http://localhost:3000",
   "http://localhost:5173", // Common Vite port, just in case
-  "https://npm-chat-fxjq.vercel.app"
+  "https://npm-chat-fxjq.vercel.app",
 ].filter(Boolean)
 
 if (!CLIENT_URL && NODE_ENV === "production") {
@@ -82,6 +85,7 @@ io.on("connection", async (socket) => {
 
   if (userId) {
     userSocketMap[userId] = socket.id
+    socket.data.username = userId
     console.log(`User connected: ${userId}`)
 
     // Delivery sweep
@@ -106,6 +110,9 @@ io.on("connection", async (socket) => {
       console.error("Error during delivery sweep:", error)
     }
   }
+
+  // Register typing indicator handlers
+  registerTypingHandlers(io, socket, userSocketMap)
 
   // Broadcast online users
   io.emit("getOnlineUsers", Object.keys(userSocketMap))
@@ -150,20 +157,26 @@ app.use("/", (req, res) => {
 
 // 5. Database Connection
 if (process.env.NODE_ENV !== "test") {
-  connectDB().then(() => {
-    console.log("Connected to DB");
-  }).catch(err => {
-    console.error("DB Connection Failed", err);
-  });
+  connectDB()
+    .then(() => {
+      console.log("Connected to DB")
+    })
+    .catch((err) => {
+      console.error("DB Connection Failed", err)
+    })
 }
 if (isVercel()) {
-  console.log("Running in Vercel Serverless environment. Skipping server.listen() and exporting Express app.");
+  console.log(
+    "Running in Vercel Serverless environment. Skipping server.listen() and exporting Express app.",
+  )
 } else if (process.env.NODE_ENV !== "test") {
-  const port = parsePort(process.env.PORT || 8080);
+  const port = parsePort(process.env.PORT || 8080)
   server.listen(port, "0.0.0.0", () => {
-    console.log(`Server is running on port ${port} in ${getPlatform()} environment`);
-    console.log(`CORS allowed origins: ${allowedOrigins.join(", ")}`);
-  });
+    console.log(
+      `Server is running on port ${port} in ${getPlatform()} environment`,
+    )
+    console.log(`CORS allowed origins: ${allowedOrigins.join(", ")}`)
+  })
 }
 
 // Export for potential use in integration tests (e.g., supertest)
