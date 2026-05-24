@@ -2,6 +2,8 @@
 import React, { useRef, useEffect, useState } from "react"
 import { useMessageContext } from "../../app/MessageContext"
 import { useAuth } from "../../app/AuthContext"
+import { getInitials } from "../../lib/utils"
+
 import EmojiPicker from "emoji-picker-react"
 import { ModeToggle } from "../ui/mode-toggle"
 
@@ -86,11 +88,19 @@ export default function ChatPanel({
               ×
             </button>
             <div className="flex flex-col items-center w-full pt-8 pb-4 px-6">
-              <img
-                src={selectedUser.avatarUrl || "/public/avatar.png"}
-                alt={selectedUser.name}
-                className="w-28 h-28 rounded-full border-4 border-[#b39ddb] object-cover shadow-md mb-3"
-              />
+              {selectedUser.avatarUrl ? (
+                <img
+                  src={selectedUser.avatarUrl}
+                  alt={selectedUser.name}
+                  className="w-28 h-28 rounded-full border-4 border-[#b39ddb] object-cover shadow-md mb-3"
+                />
+              ) : (
+                <div className="w-28 h-28 rounded-full bg-[#b39ddb] flex items-center justify-center text-4xl font-extrabold border-4 border-black shadow-md mb-3 select-none overflow-hidden">
+                  <span className="text-black uppercase">
+                    {getInitials(selectedUser.name)}
+                  </span>
+                </div>
+              )}
               <span className="text-2xl font-extrabold text-black mb-1">
                 {selectedUser.name}
               </span>
@@ -181,7 +191,7 @@ export default function ChatPanel({
           </svg>
         </button>
         <div
-          className="w-10 h-10 rounded-full bg-[#b39ddb] flex items-center justify-center text-xl font-extrabold border-2 border-sidebar-border cursor-pointer hover:opacity-80"
+          className="w-10 h-10 rounded-full bg-[#b39ddb] flex items-center justify-center text-lg font-extrabold border-2 border-sidebar-border cursor-pointer hover:opacity-80 select-none overflow-hidden"
           onClick={() => setShowUserDetails(true)}
           title="View profile"
         >
@@ -189,12 +199,12 @@ export default function ChatPanel({
             <img
               src={selectedUser.avatarUrl}
               alt={selectedUser.name || "User"}
-              className="w-full h-full object-cover rounded-full"
+              className="w-full h-full object-cover"
             />
-          ) : selectedUser && selectedUser.name ? (
-            selectedUser.name[0]
           ) : (
-            "?"
+            <span className="flex items-center justify-center w-full h-full text-black uppercase">
+              {getInitials(selectedUser?.name)}
+            </span>
           )}
         </div>
         <div className="flex justify-between w-full px-2">
