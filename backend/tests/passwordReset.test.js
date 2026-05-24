@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest"
 import request from "supertest"
 import app from "../server.js"
 import User from "../models/User.js"
+import jwt from "jsonwebtoken"
 
 vi.mock("../lib/mailer.js", () => ({
   sendPasswordResetEmail: vi.fn(),
@@ -14,10 +15,16 @@ describe("Password Reset Flow", () => {
     const email = "resetme@example.com"
     const password = "password123"
 
+    const emailVerificationToken = jwt.sign(
+      { email, type: "email-verification" },
+      process.env.JWT_SECRET || "test-secret"
+    )
+
     const signupRes = await request(app).post("/api/v1/auth/signup").send({
       email,
       password,
       name: "Reset Me",
+      emailVerificationToken,
     })
     expect(signupRes.status).toBe(201)
 
