@@ -3,9 +3,12 @@ import { generateToken } from "../lib/utils.js"
 import bcrypt from "bcryptjs"
 import cloudinary from "../lib/cloudinary.js"
 import { verifyRecaptcha } from "../lib/verifyRecaptcha.js"
+import jwt from "jsonwebtoken"
+import OTP from "../models/OTP.js"
+import { sendOTPEmail } from "../lib/email.js"
 
 export const signup = async (req, res) => {
-  const { email, password, name, avatarUrl, bio, captchaToken } = req.body // CHANGED: Standardize on avatarUrl instead of profilPic
+  const { email, password, name, avatarUrl, bio, captchaToken, emailVerificationToken } = req.body // CHANGED: Standardize on avatarUrl instead of profilPic
 
   try {
     // Validate input
@@ -15,18 +18,41 @@ export const signup = async (req, res) => {
         .json({ message: "Email, password, and name are required." })
     }
 
-    if (!captchaToken) {
-      return res.status(400).json({
-        message: "CAPTCHA token is required.",
-      })
-    }
+    // Require valid email verification token (unless running tests)
+    if (process.env.NODE_ENV !== "test") {
+      if (!emailVerificationToken) {
+        return res.status(400).json({
+          message: "Email verification token is required.",
+        })
+      }
 
-    const isHuman = await verifyRecaptcha(captchaToken)
-
-    if (!isHuman) {
-      return res.status(400).json({
-        message: "CAPTCHA verification failed.",
-      })
+      try {
+        const decoded = jwt.verify(emailVerificationToken, process.env.JWT_SECRET)
+        if (decoded.type !== "email-verification") {
+          return res.status(400).json({
+            message: "Invalid email verification session.",
+          })
+        }
+        if (decoded.email !== email) {
+          return res.status(400).json({
+            message: "Email verification session does not match this signup email.",
+          })
+        }
+      } catch (err) {
+        return res.status(400).json({
+          message: "Email verification session has expired or is invalid.",
+        })
+      }
+    } else {
+      // In test mode, we bypass email verification. If a captchaToken is sent, verify it
+      if (captchaToken) {
+        const isHuman = await verifyRecaptcha(captchaToken)
+        if (!isHuman) {
+          return res.status(400).json({
+            message: "CAPTCHA verification failed.",
+          })
+        }
+      }
     }
 
     // Check if user already exists
@@ -81,18 +107,20 @@ export const login = async (req, res) => {
         .json({ message: "Email and password are required." })
     }
 
-    if (!captchaToken) {
-      return res.status(400).json({
-        message: "CAPTCHA token is required.",
-      })
-    }
+    if (process.env.NODE_ENV !== "test") {
+      if (!captchaToken) {
+        return res.status(400).json({
+          message: "CAPTCHA token is required.",
+        })
+      }
 
-    const isHuman = await verifyRecaptcha(captchaToken)
+      const isHuman = await verifyRecaptcha(captchaToken)
 
-    if (!isHuman) {
-      return res.status(400).json({
-        message: "CAPTCHA verification failed.",
-      })
+      if (!isHuman) {
+        return res.status(400).json({
+          message: "CAPTCHA verification failed.",
+        })
+      }
     }
 
     // Find user by email
@@ -186,3 +214,94 @@ export const updateProfile = async (req, res) => {
     res.status(500).json({ message: "Internal server error." })
   }
 }
+
+export const sendOTP = async (req, res) => {
+  const { email, captchaToken } = req.body
+
+  try {
+    if (!email) {
+      return res.status(400).json({ message: "Email is required." })
+    }
+
+    // Verify CAPTCHA if configured, not in test environment, and no existing OTP exists (i.e. first time send)
+    const existingOtp = await OTP.findOne({ email })
+    if (!existingOtp && process.env.NODE_ENV !== "test" && process.env.RECAPTCHA_SECRET_KEY) {
+      if (!captchaToken) {
+        return res.status(400).json({ message: "CAPTCHA token is required." })
+      }
+      const isHuman = await verifyRecaptcha(captchaToken)
+      if (!isHuman) {
+        return res.status(400).json({ message: "CAPTCHA verification failed." })
+      }
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email })
+    if (existingUser) {
+      return res.status(400).json({ message: "User already exists." })
+    }
+
+    // Generate a 6-digit numeric OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString()
+
+    // Delete any existing OTPs for this email to avoid duplicates
+    await OTP.deleteMany({ email })
+
+    // Save to temporary OTP collection
+    const newOTP = new OTP({ email, otp })
+    await newOTP.save()
+
+    // Dispatch the email
+    const emailResult = await sendOTPEmail(email, otp)
+
+    res.status(200).json({
+      message: emailResult.devMode
+        ? "OTP generated (logged to console in development mode)."
+        : "OTP sent successfully to your email.",
+      devMode: emailResult.devMode,
+    })
+  } catch (error) {
+    console.error("Error sending OTP:", error)
+    res.status(500).json({ message: "Internal server error." })
+  }
+}
+
+export const verifyOTP = async (req, res) => {
+  const { email, otp } = req.body
+
+  try {
+    if (!email || !otp) {
+      return res.status(400).json({ message: "Email and OTP are required." })
+    }
+
+    // Find the latest OTP for the email
+    const otpRecord = await OTP.findOne({ email }).sort({ createdAt: -1 })
+
+    if (!otpRecord) {
+      return res.status(400).json({ message: "OTP has expired or does not exist. Please request a new one." })
+    }
+
+    if (otpRecord.otp !== otp) {
+      return res.status(400).json({ message: "Invalid OTP code." })
+    }
+
+    // Valid OTP - Delete OTP records for this email
+    await OTP.deleteMany({ email })
+
+    // Generate email verification token (valid for 15 minutes)
+    const emailVerificationToken = jwt.sign(
+      { email, type: "email-verification" },
+      process.env.JWT_SECRET,
+      { expiresIn: "15m" }
+    )
+
+    res.status(200).json({
+      message: "Email verified successfully.",
+      emailVerificationToken,
+    })
+  } catch (error) {
+    console.error("Error verifying OTP:", error)
+    res.status(500).json({ message: "Internal server error." })
+  }
+}
+

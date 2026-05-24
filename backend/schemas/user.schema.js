@@ -14,7 +14,8 @@ export const signupSchema = z.object({
     .min(6, "Password must be at least 6 characters long"),
   avatarUrl: z.string().optional(),
   bio: z.string().optional(),
-  captchaToken: z.string().min(1, "CAPTCHA is required"),
+  captchaToken: z.string().nullable().optional(),
+  emailVerificationToken: z.string().nullable().optional(),
 })
 
 export const loginSchema = z.object({
@@ -24,5 +25,24 @@ export const loginSchema = z.object({
     .email("Invalid email address"),
   password: z
     .string({ required_error: "Password is required" }),
-  captchaToken: z.string().min(1, "CAPTCHA is required"),
+  captchaToken: z.string().nullable().optional(),
 })
+
+export const sendOTPSchema = z.object({
+  email: z
+    .string({ required_error: "Email is required" })
+    .trim()
+    .email("Invalid email address"),
+  captchaToken: z.string().nullable().optional(),
+})
+
+export const verifyOTPSchema = z.object({
+  email: z
+    .string({ required_error: "Email is required" })
+    .trim()
+    .email("Invalid email address"),
+  otp: z
+    .string({ required_error: "OTP is required" })
+    .length(6, "OTP must be exactly 6 digits"),
+})
+
