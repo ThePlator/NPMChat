@@ -5,9 +5,8 @@ import cloudinary from "../lib/cloudinary.js"
 import { verifyRecaptcha } from "../lib/verifyRecaptcha.js"
 import jwt from "jsonwebtoken"
 import OTP from "../models/OTP.js"
-import { sendOTPEmail } from "../lib/email.js"
 import crypto from "crypto"
-import { sendPasswordResetEmail } from "../lib/mailer.js"
+import { sendPasswordResetEmail, sendOTPEmail } from "../lib/mailer.js"
 
 function hashResetToken(token) {
   const pepper = process.env.RESET_TOKEN_PEPPER || ""
@@ -31,9 +30,8 @@ export const signup = async (req, res) => {
         .json({ message: "Email, password, and name are required." })
     }
 
-    // Require valid email verification token & CAPTCHA (unless running tests)
+    // 1. Verify CAPTCHA (unless running tests)
     if (process.env.NODE_ENV !== "test") {
-      // 1. Verify CAPTCHA
       if (!captchaToken) {
         return res.status(400).json({
           message: "CAPTCHA token is required.",
@@ -46,33 +44,8 @@ export const signup = async (req, res) => {
           message: "CAPTCHA verification failed.",
         })
       }
-
-      // 2. Verify Email OTP Verification Token
-      if (!emailVerificationToken) {
-        return res.status(400).json({
-          message: "Email verification token is required.",
-        })
-      }
-
-      try {
-        const decoded = jwt.verify(emailVerificationToken, process.env.JWT_SECRET)
-        if (decoded.type !== "email-verification") {
-          return res.status(400).json({
-            message: "Invalid email verification session.",
-          })
-        }
-        if (decoded.email !== email) {
-          return res.status(400).json({
-            message: "Email verification session does not match this signup email.",
-          })
-        }
-      } catch (err) {
-        return res.status(400).json({
-          message: "Email verification session has expired or is invalid.",
-        })
-      }
     } else {
-      // In test mode, we bypass email verification. If a captchaToken is sent, verify it
+      // In test mode, if a captchaToken is sent, verify it
       if (captchaToken) {
         const isHuman = await verifyRecaptcha(captchaToken)
         if (!isHuman) {
@@ -81,6 +54,31 @@ export const signup = async (req, res) => {
           })
         }
       }
+    }
+
+    // 2. Verify Email OTP Verification Token (Always required in all environments)
+    if (!emailVerificationToken) {
+      return res.status(400).json({
+        message: "Email verification token is required.",
+      })
+    }
+
+    try {
+      const decoded = jwt.verify(emailVerificationToken, process.env.JWT_SECRET)
+      if (decoded.type !== "email-verification") {
+        return res.status(400).json({
+          message: "Invalid email verification session.",
+        })
+      }
+      if (decoded.email !== email) {
+        return res.status(400).json({
+          message: "Email verification session does not match this signup email.",
+        })
+      }
+    } catch (err) {
+      return res.status(400).json({
+        message: "Email verification session has expired or is invalid.",
+      })
     }
 
     // Check if user already exists

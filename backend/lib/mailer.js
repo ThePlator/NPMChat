@@ -38,3 +38,24 @@ export async function sendPasswordResetEmail({ to, resetUrl }) {
   })
 }
 
+export async function sendOTPEmail(to, otp) {
+  const transporter = createTransporter()
+
+  if (!transporter) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn(`[mailer] SMTP not configured. OTP for ${to}: ${otp}`)
+    }
+    return { devMode: true }
+  }
+
+  const from = process.env.SMTP_FROM || process.env.SMTP_USER
+  await transporter.sendMail({
+    from,
+    to,
+    subject: "Verify your email - NPMChat",
+    text: `Your OTP for NPMChat signup is: ${otp}. It will expire in 5 minutes.`,
+    html: `<p>Your OTP for NPMChat signup is: <strong>${otp}</strong>. It will expire in 5 minutes.</p>`,
+  })
+  return { devMode: false }
+}
+
