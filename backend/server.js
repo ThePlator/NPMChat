@@ -6,8 +6,10 @@ import helmet from "helmet"
 import cookieParser from "cookie-parser"
 import jwt from "jsonwebtoken"
 import rateLimit from "express-rate-limit"
+import swaggerUi from "swagger-ui-express"
 import Message from "./models/Message.js"
 import { connectDB } from "./lib/db.js"
+import swaggerSpec from "./lib/swagger.js"
 import userRouter from "./routes/user.routes.js"
 import messageRouter from "./routes/message.routes.js"
 import { Server } from "socket.io"
@@ -18,6 +20,8 @@ const app = express()
 const server = http.createServer(app)
 
 const { CLIENT_URL, NODE_ENV, PORT } = process.env
+
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec))
 
 app.use(helmet())
 app.use(cookieParser())
