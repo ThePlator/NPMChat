@@ -1,6 +1,4 @@
 import mongoose from "mongoose"
-import { MongoMemoryServer } from "mongodb-memory-server"
-
 export const connectDB = async () => {
   try {
     if (process.env.NODE_ENV === "test") {
@@ -23,6 +21,7 @@ export const connectDB = async () => {
 
     if (process.env.NODE_ENV === "development") {
       console.log("Spinning up MongoMemoryServer for development...")
+      const { MongoMemoryServer } = await import("mongodb-memory-server")
       const mongoServer = await MongoMemoryServer.create()
       const uri = mongoServer.getUri()
       await mongoose.connect(uri)

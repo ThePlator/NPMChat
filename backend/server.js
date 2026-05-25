@@ -3,9 +3,13 @@ import "dotenv/config"
 import cors from "cors"
 import http from "http"
 import helmet from "helmet"
+import cookieParser from "cookie-parser"
+import jwt from "jsonwebtoken"
 import rateLimit from "express-rate-limit"
+import swaggerUi from "swagger-ui-express"
 import Message from "./models/Message.js"
 import { connectDB } from "./lib/db.js"
+import swaggerSpec from "./lib/swagger.js"
 import userRouter from "./routes/user.routes.js"
 import messageRouter from "./routes/message.routes.js"
 import { Server } from "socket.io"
@@ -17,7 +21,10 @@ const server = http.createServer(app)
 
 const { CLIENT_URL, NODE_ENV, PORT } = process.env
 
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec))
+
 app.use(helmet())
+app.use(cookieParser())
 
 const standardLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -107,8 +114,30 @@ io.use((socket, next) => {
   next()
 })
 
-io.on("connection", async (socket) => {
+io.use(async (socket, next) => {
+  const token = socket.handshake.auth.token
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET)
+      socket.userId = decoded.id
+      return next()
+    } catch (err) {
+      console.error("Socket auth token invalid:", err.message)
+    }
+  }
+
+  // Fallback to query.userId for compatibility
   const userId = socket.handshake.query.userId
+  if (userId) {
+    socket.userId = userId
+    return next()
+  }
+
+  next(new Error("Authentication error: No token or userId provided"))
+})
+
+io.on("connection", async (socket) => {
+  const userId = socket.userId
 
   if (userId) {
     const userIdStr = userId.toString()

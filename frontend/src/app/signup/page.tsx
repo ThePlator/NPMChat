@@ -247,7 +247,6 @@ function SignupPageContent() {
               </span>
             )}
           </label>
-
           {recaptchaSiteKey && (
             <div className="flex justify-center">
               <ReCAPTCHA
@@ -269,7 +268,7 @@ function SignupPageContent() {
           <div className="text-center mt-2">
             <Link
               href="/login"
-              className="underline text-black font-bold cursor-[url('/custom-cursor-click.svg'),_pointer] hover:text-[#b39ddb]"
+              className="underline text-black font-bold cursor-[url('/custom-cursor-click.svg'),_pointer] hover:text-[${accent}]"
             >
               Already have an account? Login
             </Link>

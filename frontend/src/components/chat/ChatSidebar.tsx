@@ -20,7 +20,6 @@ export default function ChatSidebar({
   search: string
   setSearch: (s: string) => void
 }) {
-  console.log("users", users)
   return (
     <aside className="flex flex-col w-full md:w-80 bg-[#e9d5ff] dark:bg-background border-r-2 border-sidebar-border  h-full">
       {/* Logo */}
