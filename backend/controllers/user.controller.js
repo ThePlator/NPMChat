@@ -509,3 +509,41 @@ export const checkAuth = (req, res) => {
     }
   }
 
+export const verifyOTP = async (req, res) => {
+  const { email, otp } = req.body
+
+  try {
+    if (!email || !otp) {
+      return res.status(400).json({ message: "Email and OTP are required." })
+    }
+
+    const otpRecord = await OTP.findOne({ email }).sort({ createdAt: -1 })
+
+    if (!otpRecord) {
+      return res.status(400).json({
+        message: "OTP has expired or does not exist. Please request a new one.",
+      })
+    }
+
+    if (otpRecord.otp !== otp) {
+      return res.status(400).json({ message: "Invalid OTP code." })
+    }
+
+    await OTP.deleteMany({ email })
+
+    const emailVerificationToken = jwt.sign(
+      { email, type: "email-verification" },
+      process.env.JWT_SECRET,
+      { expiresIn: "15m" },
+    )
+
+    return res.status(200).json({
+      message: "Email verified successfully.",
+      emailVerificationToken,
+    })
+  } catch (error) {
+    console.error("Error verifying OTP:", error)
+    return res.status(500).json({ message: "Internal server error." })
+  }
+}
+
