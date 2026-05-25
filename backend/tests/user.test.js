@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll } from "vitest"
 import request from "supertest"
 import app from "../server.js"
 import User from "../models/User.js"
+import jwt from "jsonwebtoken"
 
 describe("User Profile Routes", () => {
     let testToken = ""
@@ -10,10 +11,16 @@ describe("User Profile Routes", () => {
     beforeAll(async () => {
         await User.deleteMany({})
 
+        const emailVerificationToken = jwt.sign(
+            { email: "profileuser@example.com", type: "email-verification" },
+            process.env.JWT_SECRET || "test-secret"
+        )
+
         const res = await request(app).post("/api/v1/auth/signup").send({
             email: "profileuser@example.com",
             password: "password123",
             name: "Profile User",
+            emailVerificationToken,
         })
         testToken = res.body.token
         userId = res.body.user.id

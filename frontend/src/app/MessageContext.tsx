@@ -5,7 +5,7 @@ import React, {
   useEffect,
   useCallback,
 } from "react"
-import { api } from "./fetcher"
+import { api, getToken, addTokenRefreshListener } from "./fetcher"
 import { io, Socket } from "socket.io-client"
 import { User } from "./AuthContext" // CHANGED: imported User interface
 import { toast } from "sonner" // ADDED: sonner for notifications
@@ -17,6 +17,7 @@ export interface Message { // CHANGED: Added Message interface
   receiverId: string;
   timestamp: string;
   seen: boolean;
+  delivered?: boolean;
   image?: string;
 }
 
@@ -96,17 +97,17 @@ export const MessageProvider = ({
     }
 
     const resolvedUrl = apiUrl || "http://localhost:8080"
+    const token = getToken()
 
     const socket = io(resolvedUrl, {
       transports: ["polling", "websocket"],
-      query: { userId },
+      auth: { token },
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 2000,
     })
 
     socket.on("connect", () => {
-      console.log("WebSocket connected successfully")
       setSocketConnected(true)
       setSocketError(null)
 
@@ -145,6 +146,18 @@ export const MessageProvider = ({
       socket.disconnect()
     }
   }, [currentUser])
+
+  // Sync socket with new tokens
+  useEffect(() => {
+    if (!socket) return
+    const handleTokenRefresh = (newToken: string) => {
+      socket.auth = { ...socket.auth, token: newToken }
+      if (socket.connected) {
+        socket.disconnect().connect()
+      }
+    }
+    addTokenRefreshListener(handleTokenRefresh)
+  }, [socket])
 
   // helper to update the online statuses
   const applyOnlineStatus = useCallback(
@@ -227,15 +240,45 @@ export const MessageProvider = ({
     [messages],
   )
 
-  // Listen for messageSeen socket event to update unseenMessages in real time
+  // Listen for messageSeen and messageDelivered socket events to update ticks in real time
   useEffect(() => {
     if (!socket) return
-    const handleMessageSeen = (data: { userId: string }) => {
+
+    const handleMessageSeen = (data: { userId: string; messageId?: string }) => {
       setUnseenMessages((prev) => ({ ...prev, [data.userId]: 0 }))
+      if (data.messageId) {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg._id === data.messageId
+              ? { ...msg, seen: true, delivered: true }
+              : msg,
+          ),
+        )
+      } else {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.receiverId === data.userId
+              ? { ...msg, seen: true, delivered: true }
+              : msg,
+          ),
+        )
+      }
     }
+
+    const handleMessageDelivered = ({ messageId }: { messageId: string }) => {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg._id === messageId ? { ...msg, delivered: true } : msg,
+        ),
+      )
+    }
+
     socket.on("messageSeen", handleMessageSeen)
+    socket.on("messageDelivered", handleMessageDelivered)
+
     return () => {
       socket.off("messageSeen", handleMessageSeen)
+      socket.off("messageDelivered", handleMessageDelivered)
     }
   }, [socket])
 
@@ -266,15 +309,11 @@ export const MessageProvider = ({
           receiverId: receiverId,
           timestamp: messageData.timestamp || new Date().toISOString(),
           seen: messageData.seen || false,
+          delivered: messageData.delivered || false,
           ...(messageData.image && { image: messageData.image }),
         }
 
         setMessages((msgs: Message[]) => [...msgs, newMessage]) // CHANGED: Use Message[] instead of any[]
-
-        // Also emit via socket for real-time
-        if (socket) {
-          socket.emit("send-message", newMessage)
-        }
       } catch (err: any) {
         setError(err.message || "Failed to send message")
       }

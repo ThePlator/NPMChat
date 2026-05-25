@@ -2,8 +2,33 @@
 import React, { useRef, useEffect, useState } from "react"
 import { useMessageContext } from "../../app/MessageContext"
 import { useAuth } from "../../app/AuthContext"
+import { getInitials } from "../../lib/utils"
+import { useTypingIndicator } from "../useTypingIndicator"
+import { TypingIndicator } from "./TypingIndicator"
+
 import EmojiPicker from "emoji-picker-react"
 import { ModeToggle } from "../ui/mode-toggle"
+import { Check, CheckCheck } from "lucide-react"
+
+function MessageTick({
+  seen,
+  delivered,
+}: {
+  seen?: boolean
+  delivered?: boolean
+}) {
+  if (seen) {
+    return <CheckCheck size={14} className="text-blue-500" aria-label="Seen" />
+  }
+
+  if (delivered) {
+    return (
+      <CheckCheck size={14} className="text-gray-400" aria-label="Delivered" />
+    )
+  }
+
+  return <Check size={14} className="text-gray-400" aria-label="Sent" />
+}
 
 export default function ChatPanel({
   selectedUser,
@@ -24,10 +49,16 @@ export default function ChatPanel({
   const [input, setInput] = useState("")
   const messageEndRef = useRef<HTMLDivElement | null>(null)
   const currentUserId = user?.id
+  const currentUsername = user?.name || ""
   const [showEmoji, setShowEmoji] = useState(false)
   const [image, setImage] = useState<string | null>(null)
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null)
   const [showUserDetails, setShowUserDetails] = useState(false)
+
+  const { typingUsers, handleTyping } = useTypingIndicator(
+    selectedUser?._id || "",
+    currentUsername,
+  )
 
   useEffect(() => {
     messageEndRef.current?.scrollIntoView({ behavior: "auto" })
@@ -86,11 +117,19 @@ export default function ChatPanel({
               ×
             </button>
             <div className="flex flex-col items-center w-full pt-8 pb-4 px-6">
-              <img
-                src={selectedUser.avatarUrl || "/public/avatar.png"}
-                alt={selectedUser.name}
-                className="w-28 h-28 rounded-full border-4 border-[#b39ddb] object-cover shadow-md mb-3"
-              />
+              {selectedUser.avatarUrl ? (
+                <img
+                  src={selectedUser.avatarUrl}
+                  alt={selectedUser.name}
+                  className="w-28 h-28 rounded-full border-4 border-[#b39ddb] object-cover shadow-md mb-3"
+                />
+              ) : (
+                <div className="w-28 h-28 rounded-full bg-[#b39ddb] flex items-center justify-center text-4xl font-extrabold border-4 border-black shadow-md mb-3 select-none overflow-hidden">
+                  <span className="text-black uppercase">
+                    {getInitials(selectedUser.name)}
+                  </span>
+                </div>
+              )}
               <span className="text-2xl font-extrabold text-black mb-1">
                 {selectedUser.name}
               </span>
@@ -181,7 +220,7 @@ export default function ChatPanel({
           </svg>
         </button>
         <div
-          className="w-10 h-10 rounded-full bg-[#b39ddb] flex items-center justify-center text-xl font-extrabold border-2 border-sidebar-border cursor-pointer hover:opacity-80"
+          className="w-10 h-10 rounded-full bg-[#b39ddb] flex items-center justify-center text-lg font-extrabold border-2 border-sidebar-border cursor-pointer hover:opacity-80 select-none overflow-hidden"
           onClick={() => setShowUserDetails(true)}
           title="View profile"
         >
@@ -189,12 +228,12 @@ export default function ChatPanel({
             <img
               src={selectedUser.avatarUrl}
               alt={selectedUser.name || "User"}
-              className="w-full h-full object-cover rounded-full"
+              className="w-full h-full object-cover"
             />
-          ) : selectedUser && selectedUser.name ? (
-            selectedUser.name[0]
           ) : (
-            "?"
+            <span className="flex items-center justify-center w-full h-full text-black uppercase">
+              {getInitials(selectedUser?.name)}
+            </span>
           )}
         </div>
         <div className="flex justify-between w-full px-2">
@@ -279,6 +318,12 @@ export default function ChatPanel({
                 )}
                 <span className="flex items-center gap-1 text-xs text-gray-500 mt-1 self-end pr-3 pb-1">
                   {time}
+                  {isMe && (
+                    <MessageTick
+                      seen={msg.seen}
+                      delivered={msg.delivered ?? false}
+                    />
+                  )}
                 </span>
               </div>
             </div>
@@ -288,74 +333,79 @@ export default function ChatPanel({
       </div>
       {/* Input */}
       <form
-        className="flex items-center gap-2 border-t-2 border-sidebar-border  px-2 py-2 bg-background sticky bottom-0 z-10 relative"
+        className="flex flex-col gap-0 border-t-2 border-sidebar-border  px-2 py-2 bg-background sticky bottom-0 z-10 relative"
         onSubmit={(e) => {
           e.preventDefault()
           handleSend()
         }}
       >
-        <button
-          type="button"
-          className="px-2 py-2 text-xl border-2 border-sidebar-border  rounded-full bg-accent  hover:bg-[#b39ddb]"
-          onClick={() => setShowEmoji((v) => !v)}
-          aria-label="Add emoji"
-        >
-          😊
-        </button>
-        {showEmoji && (
-          <div className="absolute bottom-14 left-0 z-50">
-            <EmojiPicker
-              onEmojiClick={(emojiData) => {
-                setInput((prev) => prev + emojiData.emoji)
-                setShowEmoji(false)
-              }}
+        {/* Typing Indicator */}
+        <TypingIndicator typingUsers={typingUsers} />
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="px-2 py-2 text-xl border-2 border-sidebar-border  rounded-full bg-accent  hover:bg-[#b39ddb]"
+            onClick={() => setShowEmoji((v) => !v)}
+            aria-label="Add emoji"
+          >
+            😊
+          </button>
+          {showEmoji && (
+            <div className="absolute bottom-14 left-0 z-50">
+              <EmojiPicker
+                onEmojiClick={(emojiData) => {
+                  setInput((prev) => prev + emojiData.emoji)
+                  setShowEmoji(false)
+                }}
+              />
+            </div>
+          )}
+          <label
+            className="px-2 py-2 cursor-pointer border-2 border-sidebar-border rounded-full bg-accent hover:bg-[#b39ddb] flex items-center justify-center"
+            title="Attach image"
+          >
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleImageChange}
             />
-          </div>
-        )}
-        <label
-          className="px-2 py-2 cursor-pointer border-2 border-sidebar-border rounded-full bg-accent hover:bg-[#b39ddb] flex items-center justify-center"
-          title="Attach image"
-        >
+            <span role="img" aria-label="Attach">
+              📎
+            </span>
+          </label>
+          {image && (
+            <div className="relative flex items-center">
+              <img
+                src={image}
+                alt="preview"
+                className="w-12 h-12 object-cover rounded border-2 border-sidebar-border  mr-2"
+              />
+              <button
+                type="button"
+                className="absolute top-0 right-0 bg-white border border-sidebar-border  rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                onClick={() => setImage(null)}
+                aria-label="Remove image"
+              >
+                ×
+              </button>
+            </div>
+          )}
           <input
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleImageChange}
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleTyping}
+            placeholder="Type a message..."
+            className="flex-1 px-3 py-2 border-2 border-sidebar-border  rounded-full font-medium text-base bg-[#f3e8ff] dark:bg-accent text-primary focus:bg-white focus:outline-none focus:border-[#39ff14] placeholder:text-gray-400"
           />
-          <span role="img" aria-label="Attach">
-            📎
-          </span>
-        </label>
-        {image && (
-          <div className="relative flex items-center">
-            <img
-              src={image}
-              alt="preview"
-              className="w-12 h-12 object-cover rounded border-2 border-sidebar-border  mr-2"
-            />
-            <button
-              type="button"
-              className="absolute top-0 right-0 bg-white border border-sidebar-border  rounded-full w-5 h-5 flex items-center justify-center text-xs"
-              onClick={() => setImage(null)}
-              aria-label="Remove image"
-            >
-              ×
-            </button>
-          </div>
-        )}
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Type a message..."
-          className="flex-1 px-3 py-2 border-2 border-sidebar-border  rounded-full font-medium text-base bg-[#f3e8ff] dark:bg-accent text-primary focus:bg-white focus:outline-none focus:border-[#39ff14] placeholder:text-gray-400"
-        />
-        <button
-          type="submit"
-          className="px-4 py-2 bg-[#39ff14] text-black text-base font-bold rounded-full border-2 border-sidebar-border  transition-all duration-100 hover:bg-[#b39ddb] hover:text-white hover:scale-105 shadow-sm"
-        >
-          Send
-        </button>
+          <button
+            type="submit"
+            className="px-4 py-2 bg-[#39ff14] text-black text-base font-bold rounded-full border-2 border-sidebar-border  transition-all duration-100 hover:bg-[#b39ddb] hover:text-white hover:scale-105 shadow-sm"
+          >
+            Send
+          </button>
+        </div>
       </form>
       {loadingMessages && (
         <div className="p-4 text-center">Loading messages...</div>

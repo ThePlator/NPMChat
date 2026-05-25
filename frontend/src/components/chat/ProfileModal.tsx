@@ -1,4 +1,6 @@
 import React, { useRef } from "react"
+import { getInitials } from "../../lib/utils"
+
 
 export default function ProfileModal({
   open,
@@ -40,7 +42,7 @@ export default function ProfileModal({
         </button>
         <div className="flex flex-col items-center gap-3">
           <div
-            className="w-24 h-24 rounded-full bg-[#b39ddb] flex items-center justify-center border-4 border-black cursor-pointer hover:bg-[#39ff14]"
+            className="w-24 h-24 rounded-full bg-[#b39ddb] flex items-center justify-center border-4 border-black cursor-pointer hover:bg-[#39ff14] overflow-hidden select-none"
             onClick={() => fileInputRef.current?.click()}
             title="Change photo"
           >
@@ -48,11 +50,11 @@ export default function ProfileModal({
               <img
                 src={profileDraft.avatarUrl}
                 alt="avatar"
-                className="w-full h-full object-cover rounded-full"
+                className="w-full h-full object-cover"
               />
             ) : (
-              <span className="text-3xl font-bold text-black">
-                {profileDraft.name[0]}
+              <span className="text-3xl font-extrabold text-black uppercase">
+                {getInitials(profileDraft.name)}
               </span>
             )}
           </div>

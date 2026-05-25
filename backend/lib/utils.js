@@ -1,13 +1,22 @@
 import jwt from "jsonwebtoken"
+import crypto from "crypto"
 
-export function generateToken(userId) {
+export function generateAccessToken(userId) {
   if (!userId) {
     throw new Error("User ID is required to generate a token")
   }
 
-  const token = jwt.sign({ id: userId }, process.env.JWT_SECRET, {
-    expiresIn: "30d", // Token validity period
+  return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
+    expiresIn: "15m",
   })
-
-  return token
 }
+
+export function generateRefreshToken() {
+  return crypto.randomBytes(64).toString("hex")
+}
+
+export function generateRefreshTokenId() {
+  return crypto.randomUUID()
+}
+
+export const generateToken = generateAccessToken
