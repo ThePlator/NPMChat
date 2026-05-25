@@ -112,4 +112,57 @@ describe("Message Routes", () => {
     expect(res.status).toBe(404)
     expect(res.body.message).toBe("Message not found or unauthorized.")
   })
+
+  it("PUT /api/v1/messages/edit/:messageId - should allow owner to edit message", async () => {
+    const res = await request(app)
+      .put(`/api/v1/messages/edit/${messageId}`)
+      .set("Authorization", `Bearer ${user1Token}`)
+      .send({
+        text: "Edited message",
+      })
+
+    expect(res.status).toBe(200)
+    expect(res.body.data.text).toBe("Edited message")
+    expect(res.body.data.isEdited).toBe(true)
+  })
+
+  it("DELETE /api/v1/messages/delete/:messageId - should allow owner to soft delete message", async () => {
+    const res = await request(app)
+      .delete(`/api/v1/messages/delete/${messageId}`)
+      .set("Authorization", `Bearer ${user1Token}`)
+
+    expect(res.status).toBe(200)
+    expect(res.body.data.deleted).toBe(true)
+  })
+
+  it("PUT /api/v1/messages/edit/:messageId - should prevent unauthorized user from editing", async () => {
+    const newMessage = await Message.create({
+      senderId: user1Id,
+      receiverId: user2Id,
+      text: "Unauthorized edit test",
+    })
+
+    const res = await request(app)
+      .put(`/api/v1/messages/edit/${newMessage._id}`)
+      .set("Authorization", `Bearer ${user2Token}`)
+      .send({
+        text: "Hacked",
+      })
+
+    expect(res.status).toBe(403)
+  })
+
+  it("DELETE /api/v1/messages/delete/:messageId - should prevent unauthorized user from deleting", async () => {
+    const newMessage = await Message.create({
+      senderId: user1Id,
+      receiverId: user2Id,
+      text: "Unauthorized delete test",
+    })
+
+    const res = await request(app)
+      .delete(`/api/v1/messages/delete/${newMessage._id}`)
+      .set("Authorization", `Bearer ${user2Token}`)
+
+    expect(res.status).toBe(403)
+  })
 })

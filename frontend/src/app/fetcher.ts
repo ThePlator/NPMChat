@@ -3,8 +3,8 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
 if (!process.env.NEXT_PUBLIC_API_URL && process.env.NODE_ENV === "production") {
   console.error(
     "[NPMChat] WARNING: NEXT_PUBLIC_API_URL is not set. " +
-      "All API calls will target http://localhost:8080, which will fail in production. " +
-      "Set NEXT_PUBLIC_API_URL to your backend URL."
+    "All API calls will target http://localhost:8080, which will fail in production. " +
+    "Set NEXT_PUBLIC_API_URL to your backend URL."
   )
 }
 
@@ -50,10 +50,10 @@ async function fetcher(
     "Content-Type": "application/json",
     ...(options.headers || {}),
   }
-  
+
   const t = getToken()
   if (t) headers["Authorization"] = `Bearer ${t}`
-  
+
   // Always include credentials for cookies (refresh token)
   const fetchOptions: RequestInit = {
     ...options,
@@ -62,7 +62,7 @@ async function fetcher(
   }
 
   const res = await fetch(`${BASES[base]}${path}`, fetchOptions)
-  
+
   let data
   try {
     data = await res.json()
@@ -81,7 +81,7 @@ async function fetcher(
               headers: { "Content-Type": "application/json" },
               credentials: "include"
             })
-            
+
             if (refreshRes.ok) {
               const refreshData = await refreshRes.json()
               const newToken = refreshData.token
@@ -107,8 +107,8 @@ async function fetcher(
 
     const errorMsg = data?.message || res.statusText || "API Error"
     const error = new Error(errorMsg)
-    ;(error as any).data = data
-    ;(error as any).status = res.status
+      ; (error as any).data = data
+      ; (error as any).status = res.status
     throw error
   }
   return data

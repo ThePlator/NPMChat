@@ -86,38 +86,35 @@ export default function Header() {
         </nav>
 
         {/* Icons */}
-        <div className="hidden md:flex items-center space-x-4">
+        <div className="hidden md:flex items-center gap-1.5">
           <Tooltip>
-            <TooltipTrigger>
+            <TooltipTrigger asChild>
               <a
                 href="https://github.com/ThePlator/NPMChat"
                 target="_blank"
                 rel="noopener noreferrer"
+                className="relative inline-flex items-center justify-center w-9 h-9 hover:bg-muted rounded-sm transition-colors"
               >
-                <div className="relative p-2 hover:bg-muted rounded-sm transition-colors mr-1">
-                  <Star className="w-5 h-5 text-primary" />
-                  {stars !== null && (
-                    <span className="absolute -top-1 -right-2 text-xs bg-yellow-500 text-white px-1 rounded-sm flex place-items-center">
-                      {stars}
-                    </span>
-                  )}
-                </div>
+                <Star className="w-5 h-5 text-primary" />
+                {stars !== null && (
+                  <span className="absolute -top-1 -right-1 text-[10px] leading-none bg-yellow-500 text-white px-1 py-0.5 rounded-sm font-semibold min-w-[18px] text-center">
+                    {stars}
+                  </span>
+                )}
               </a>
             </TooltipTrigger>
             <TooltipContent>
               <p className="font-semibold tracking-wide">Give us Star</p>
             </TooltipContent>
           </Tooltip>
-          <div>
-            <ModeToggle />
-          </div>
+          <ModeToggle />
           <button
-            className="p-2 hover:bg-muted rounded-sm transition-colors"
+            className="inline-flex items-center justify-center w-9 h-9 hover:bg-muted rounded-sm transition-colors"
             onClick={() => setIsSearchOpen(true)}
           >
             <Search className="w-5 h-5 text-primary" />
           </button>
-          <button className="p-2 hover:bg-muted rounded-sm transition-colors">
+          <button className="inline-flex items-center justify-center w-9 h-9 hover:bg-muted rounded-sm transition-colors">
             <Heart className="w-5 h-5 text-primary" />
           </button>
         </div>
