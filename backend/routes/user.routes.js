@@ -6,6 +6,8 @@ import {
   resetPassword,
   signup,
   updateProfile,
+  refresh,
+  logout,
   sendOTP,
   verifyOTP,
 } from "../controllers/user.controller.js"
@@ -24,6 +26,8 @@ const userRouter = express.Router()
 
 userRouter.post("/signup", validateBody(signupSchema), signup)
 userRouter.post("/login", validateBody(loginSchema), login)
+userRouter.post("/refresh", refresh)
+userRouter.post("/logout", logout)
 userRouter.post("/send-otp", validateBody(sendOTPSchema), sendOTP)
 userRouter.post("/verify-otp", validateBody(verifyOTPSchema), verifyOTP)
 userRouter.post("/forgot-password", validateBody(forgotPasswordSchema), forgotPassword)

@@ -1,8 +1,8 @@
 "use client"
 import React, { createContext, useContext, useState, useEffect } from "react"
-import { api, setToken, getToken } from "./fetcher"
+import { api, setToken } from "./fetcher"
 
-export interface User { // CHANGED: Added User interface to replace any
+export interface User {
   id?: string;
   _id?: string;
   name?: string;
@@ -12,7 +12,7 @@ export interface User { // CHANGED: Added User interface to replace any
   bio?: string;
 }
 
-export interface AuthContextType { // CHANGED: Added AuthContextType to replace any
+export interface AuthContextType {
   user: User | null;
   loading: boolean;
   error: string | null;
@@ -23,19 +23,28 @@ export interface AuthContextType { // CHANGED: Added AuthContextType to replace 
   updateProfile: (data: Record<string, unknown>) => Promise<any>;
 }
 
-const AuthContext = createContext<AuthContextType | null>(null) // CHANGED: Use AuthContextType instead of any
+const AuthContext = createContext<AuthContextType | null>(null)
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null) // CHANGED: Use User type instead of any
+  const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const t = getToken()
-    if (t) checkAuth()
-    else setLoading(false)
+    // Initial restoration via refresh
+    const restoreSession = async () => {
+      try {
+        const res = await api.post("/refresh", {}, "auth")
+        setToken(res.token)
+        await checkAuth()
+      } catch (e) {
+        setLoading(false)
+      }
+    }
+    restoreSession()
   }, [])
 
-  async function signup(data: Record<string, unknown>) { // CHANGED: Replaced any with Record<string, unknown>
+  async function signup(data: Record<string, unknown>) {
     setError(null)
     setLoading(true)
     try {
@@ -51,7 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  async function login(data: Record<string, unknown>) { // CHANGED: Replaced any with Record<string, unknown>
+  async function login(data: Record<string, unknown>) {
     setError(null)
     setLoading(true)
     try {
@@ -79,12 +88,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(false)
   }
 
-  function logout() {
-    setUser(null)
-    setToken(null)
+  async function logout() {
+    try {
+      await api.post("/logout", {}, "auth")
+    } catch (e) {
+      console.error("Logout error", e)
+    } finally {
+      setUser(null)
+      setToken(null)
+    }
   }
 
-  async function updateProfile(data: Record<string, unknown>) { // CHANGED: Replaced any with Record<string, unknown>
+  async function updateProfile(data: Record<string, unknown>) {
     setLoading(true)
     try {
       const res = await api.put("/update-profile", data, "auth")
