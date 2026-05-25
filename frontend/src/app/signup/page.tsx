@@ -248,51 +248,28 @@ function SignupPageContent() {
             )}
           </label>
 
-          {process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY && (
+          {recaptchaSiteKey && (
             <div className="flex justify-center">
               <ReCAPTCHA
-                sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY}
+                sitekey={recaptchaSiteKey}
                 onChange={(token: string | null) =>
                   setCaptchaToken(token)
                 }
               />
             </div>
           )}
-          {errors.password && (
-            <span className="text-red-600 text-sm font-normal">
-              {errors.password}
-            </span>
-          )}
-        </label>
-        {recaptchaSiteKey && (
-          <div className="flex justify-center">
-            <ReCAPTCHA
-              sitekey={recaptchaSiteKey}
-              onChange={(token: string | null) =>
-                setCaptchaToken(token)
-              }
-            />
-          </div>
-        )}
-        <button
-          type="submit"
-          disabled={loading}
-          className="mt-2 border-2 border-black bg-[#39ff14] text-black font-extrabold text-lg py-2 rounded-none transition-all cursor-[url('/custom-cursor-click.svg'),_pointer] hover:bg-[#b39ddb] hover:text-white focus:outline-none"
-          style={{ boxShadow: `4px 4px 0 0 ${accentGreen}` }}
-        >
-          {loading ? "Signing Up..." : "Sign Up 2"}
-        </button>
-        <div className="text-center mt-2">
-          <Link
-            href="/login"
-            className="underline text-black font-bold cursor-[url('/custom-cursor-click.svg'),_pointer] hover:text-[${accent}]"
+          <button
+            type="submit"
+            disabled={sendingOtp}
+            className="mt-2 border-2 border-black bg-[#39ff14] text-black font-extrabold text-lg py-2 rounded-none transition-all cursor-[url('/custom-cursor-click.svg'),_pointer] hover:bg-[#b39ddb] hover:text-white focus:outline-none"
+            style={{ boxShadow: `4px 4px 0 0 ${accentGreen}` }}
           >
             {sendingOtp ? "Requesting OTP..." : "Verify Email"}
           </button>
           <div className="text-center mt-2">
             <Link
               href="/login"
-              className="underline text-black font-bold cursor-[url('/custom-cursor-click.svg'),_pointer] hover:text-[${accent}]"
+              className="underline text-black font-bold cursor-[url('/custom-cursor-click.svg'),_pointer] hover:text-[#b39ddb]"
             >
               Already have an account? Login
             </Link>
