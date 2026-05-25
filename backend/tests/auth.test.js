@@ -75,6 +75,31 @@ describe("Auth Routes", () => {
     expect(res.body.message).toBe("User already exists.")
   })
 
+  it("POST /api/v1/auth/signup - should succeed even with case differences in email", async () => {
+    // Generate an OTP and verification token with lowercase email
+    const emailLower = "casetest@example.com"
+    const emailUpper = "CASETEST@example.com"
+    
+    const emailVerificationToken = jwt.sign(
+      { email: emailLower, type: "email-verification" },
+      process.env.JWT_SECRET || "test-secret",
+    )
+
+    // Attempt signup with uppercase email
+    const res = await request(app)
+      .post("/api/v1/auth/signup")
+      .send({
+        email: emailUpper,
+        password: "password123",
+        name: "Case Test User",
+        emailVerificationToken,
+      })
+
+    expect(res.status).toBe(201)
+    expect(res.body.message).toBe("User created successfully.")
+    expect(res.body.user.email).toBe(emailUpper)
+  })
+
   it("POST /api/v1/auth/signup - should fail with missing fields", async () => {
     const res = await request(app)
       .post("/api/v1/auth/signup")
