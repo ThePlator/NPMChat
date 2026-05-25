@@ -196,15 +196,7 @@ export const signup = async (req, res) => {
 }
 
 export const login = async (req, res) => {
-    const { email, password, captchaToken } = req.body
-
-    try {
-      // Validate input
-      if (!email || !password) {
-        return res
-          .status(400)
-          .json({ message: "Email and password are required." })
-      }
+  const { email, password, captchaToken } = req.body
 
   try {
     if (!email || !password) {
@@ -213,7 +205,12 @@ export const login = async (req, res) => {
         .json({ message: "Email and password are required." })
     }
 
-        const isHuman = await verifyRecaptcha(captchaToken)
+    if (process.env.NODE_ENV !== "test") {
+      if (!captchaToken) {
+        return res.status(400).json({
+          message: "CAPTCHA token is required.",
+        })
+      }
 
       const isHuman = await verifyRecaptcha(captchaToken)
       if (!isHuman) {
@@ -221,6 +218,7 @@ export const login = async (req, res) => {
           message: "CAPTCHA verification failed.",
         })
       }
+    }
 
     const user = await User.findOne({ email })
     if (!user) {
@@ -322,12 +320,13 @@ export const logout = async (req, res) => {
     console.error("Error during logout:", error)
     return res.status(500).json({ message: "Internal server error." })
   }
+}
 
-  export const checkAuth = (req, res) => {
-    try {
-      if (!req.user) {
-        return res.status(401).json({ message: "Not authorized." })
-      }
+export const checkAuth = (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: "Not authorized." })
+    }
 
     return res.status(200).json({
       user: {
@@ -342,6 +341,7 @@ export const logout = async (req, res) => {
     console.error("Error checking authentication:", error)
     return res.status(500).json({ message: "Internal server error." })
   }
+}
 
   export const forgotPassword = async (req, res) => {
     const { email, captchaToken } = req.body
@@ -379,7 +379,6 @@ export const logout = async (req, res) => {
       const resetUrl = `${baseUrl.replace(/\/$/, "")}/reset-password?token=${encodeURIComponent(rawToken)}`
       await sendPasswordResetEmail({ to: user.email, resetUrl })
 
-    if (!user) {
       return res.status(200).json({
         message:
           "If an account exists for that email, a password reset link has been sent.",
@@ -388,7 +387,7 @@ export const logout = async (req, res) => {
       console.error("Error during forgotPassword:", error)
       return res.status(500).json({ message: "Internal server error." })
     }
-  }
+}
 
   export const resetPassword = async (req, res) => {
     const { token, password } = req.body
@@ -397,19 +396,31 @@ export const logout = async (req, res) => {
       const tokenHash = hashResetToken(token)
       const now = new Date()
 
-    const baseUrl = process.env.CLIENT_URL || "http://localhost:3000"
-    const resetUrl = `${baseUrl.replace(/\/$/, "")}/reset-password?token=${encodeURIComponent(rawToken)}`
-
-    await sendPasswordResetEmail({ to: user.email, resetUrl })
-
-    return res.status(200).json({
-      message:
-        "If an account exists for that email, a password reset link has been sent.",
+    const user = await User.findOne({
+      passwordResetTokenHash: tokenHash,
+      passwordResetUsedAt: null,
+      passwordResetExpiresAt: { $gt: now },
     })
+
+    if (!user) {
+      return res.status(400).json({ message: "Invalid or expired reset token." })
+    }
+
+    const salt = await bcrypt.genSalt(10)
+    const hashedPassword = await bcrypt.hash(password, salt)
+
+    user.password = hashedPassword
+    user.passwordResetUsedAt = now
+    user.passwordResetTokenHash = null
+    user.passwordResetExpiresAt = null
+    await user.save()
+
+    return res.status(200).json({ message: "Password reset successful." })
   } catch (error) {
-    console.error("Error during forgotPassword:", error)
+    console.error("Error during resetPassword:", error)
     return res.status(500).json({ message: "Internal server error." })
   }
+}
 
   // Controller to update user profile
   export const updateProfile = async (req, res) => {
@@ -498,141 +509,3 @@ export const logout = async (req, res) => {
     }
   }
 
-export const updateProfile = async (req, res) => {
-  const { name, avatarUrl, bio } = req.body
-  const userId = req.user._id
-
-  try {
-    let updatedData
-
-    if (!avatarUrl) {
-      updatedData = await User.findByIdAndUpdate(
-        userId,
-        { name, bio },
-        { new: true },
-      )
-    } else {
-      const uploadedImage = await cloudinary.uploader.upload(avatarUrl)
-
-      if (!otpRecord) {
-        return res.status(400).json({ message: "OTP has expired or does not exist. Please request a new one." })
-      }
-
-      if (otpRecord.otp !== otp) {
-        return res.status(400).json({ message: "Invalid OTP code." })
-      }
-
-      // Valid OTP - Delete OTP records for this email
-      await OTP.deleteMany({ email })
-
-      // Generate email verification token (valid for 15 minutes)
-      const emailVerificationToken = jwt.sign(
-        { email, type: "email-verification" },
-        process.env.JWT_SECRET,
-        { expiresIn: "15m" }
-      )
-
-    return res.status(200).json({
-      message: "Profile updated successfully.",
-      user: {
-        id: updatedData._id,
-        email: updatedData.email,
-        name: updatedData.name,
-        avatarUrl: updatedData.avatarUrl,
-        bio: updatedData.bio,
-      },
-    })
-  } catch (error) {
-    console.error("Error updating profile:", error)
-    return res.status(500).json({ message: "Internal server error." })
-  }
-}
-
-export const sendOTP = async (req, res) => {
-  const { email, captchaToken } = req.body
-
-  try {
-    if (!email) {
-      return res.status(400).json({ message: "Email is required." })
-    }
-
-    const existingOtp = await OTP.findOne({ email })
-
-    if (
-      !existingOtp &&
-      process.env.NODE_ENV !== "test" &&
-      process.env.RECAPTCHA_SECRET_KEY
-    ) {
-      if (!captchaToken) {
-        return res.status(400).json({ message: "CAPTCHA token is required." })
-      }
-
-      const isHuman = await verifyRecaptcha(captchaToken)
-      if (!isHuman) {
-        return res.status(400).json({ message: "CAPTCHA verification failed." })
-      }
-    }
-
-    const existingUser = await User.findOne({ email })
-    if (existingUser) {
-      return res.status(400).json({ message: "User already exists." })
-    }
-
-    const otp = Math.floor(100000 + Math.random() * 900000).toString()
-
-    await OTP.deleteMany({ email })
-
-    const newOTP = new OTP({ email, otp })
-    await newOTP.save()
-
-    const emailResult = await sendOTPEmail(email, otp)
-
-    return res.status(200).json({
-      message: emailResult.devMode
-        ? "OTP generated (logged to console in development mode)."
-        : "OTP sent successfully to your email.",
-      devMode: emailResult.devMode,
-    })
-  } catch (error) {
-    console.error("Error sending OTP:", error)
-    return res.status(500).json({ message: "Internal server error." })
-  }
-}
-
-export const verifyOTP = async (req, res) => {
-  const { email, otp } = req.body
-
-  try {
-    if (!email || !otp) {
-      return res.status(400).json({ message: "Email and OTP are required." })
-    }
-
-    const otpRecord = await OTP.findOne({ email }).sort({ createdAt: -1 })
-
-    if (!otpRecord) {
-      return res.status(400).json({
-        message: "OTP has expired or does not exist. Please request a new one.",
-      })
-    }
-
-    if (otpRecord.otp !== otp) {
-      return res.status(400).json({ message: "Invalid OTP code." })
-    }
-
-    await OTP.deleteMany({ email })
-
-    const emailVerificationToken = jwt.sign(
-      { email, type: "email-verification" },
-      process.env.JWT_SECRET,
-      { expiresIn: "15m" },
-    )
-
-    return res.status(200).json({
-      message: "Email verified successfully.",
-      emailVerificationToken,
-    })
-  } catch (error) {
-    console.error("Error verifying OTP:", error)
-    return res.status(500).json({ message: "Internal server error." })
-  }
-}
