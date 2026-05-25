@@ -19,6 +19,10 @@ export interface Message { // CHANGED: Added Message interface
   seen: boolean;
   delivered?: boolean;
   image?: string;
+  isEdited?: boolean;
+  deleted?: boolean;
+  editedAt?: string;
+  deletedAt?: string;
 }
 
 export interface MessageContextType { // CHANGED: Added MessageContextType
@@ -36,6 +40,13 @@ export interface MessageContextType { // CHANGED: Added MessageContextType
   error: string | null;
   setError: (error: string | null) => void;
   socket: Socket | null;
+  editMessage: (
+    messageId: string,
+    text: string,
+  ) => Promise<void>
+  deleteMessage: (
+    messageId: string,
+  ) => Promise<void>
   socketConnected: boolean;
   socketError: string | null;
 }
@@ -106,7 +117,6 @@ export const MessageProvider = ({
       reconnectionAttempts: 5,
       reconnectionDelay: 2000,
     })
-
     socket.on("connect", () => {
       setSocketConnected(true)
       setSocketError(null)
@@ -292,58 +302,158 @@ export const MessageProvider = ({
         const res = await api.post(`/send/${receiverId}`, body)
 
         // Handle different possible response structures
-        let messageData
-        if (res.data) {
-          messageData = res.data
-        } else if (res.message) {
-          messageData = res
-        } else {
-          messageData = res
-        }
+        const newMessage = res.data
 
-        // Ensure the message has required fields
-        const newMessage = {
-          _id: messageData._id || Date.now().toString(),
-          text: messageData.text || text,
-          senderId: currentUser.id,
-          receiverId: receiverId,
-          timestamp: messageData.timestamp || new Date().toISOString(),
-          seen: messageData.seen || false,
-          delivered: messageData.delivered || false,
-          ...(messageData.image && { image: messageData.image }),
-        }
+        setMessages((prev) => {
+          const exists = prev.some(
+            (msg) => msg._id === newMessage._id,
+          )
 
-        setMessages((msgs: Message[]) => [...msgs, newMessage]) // CHANGED: Use Message[] instead of any[]
+          if (exists) return prev
+
+          return [...prev, newMessage]
+        })// CHANGED: Use Message[] instead of any[]
       } catch (err: any) {
         setError(err.message || "Failed to send message")
       }
     },
-    [currentUser, socket],
+    [currentUser],
   )
 
+  const editMessage = useCallback(
+    async (messageId: string, text: string) => {
+      try {
+        const res = await api.put(
+          `/edit/${messageId}`,
+          { text },
+        )
+
+        const updatedMessage =
+          res.data || res
+
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg._id === messageId
+              ? updatedMessage
+              : msg,
+          ),
+        )
+      } catch (err: any) {
+        setError(
+          err.message ||
+          "Failed to edit message",
+        )
+      }
+    },
+    [],
+  )
+
+  const deleteMessage = useCallback(
+    async (messageId: string) => {
+      try {
+        const res = await api.delete(
+          `/delete/${messageId}`,
+        )
+
+        const deletedMessage =
+          res.data || res
+
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg._id === messageId
+              ? deletedMessage
+              : msg,
+          ),
+        )
+      } catch (err: any) {
+        setError(
+          err.message ||
+          "Failed to delete message",
+        )
+      }
+    },
+    [],
+  )
+
+  useEffect(() => {
+    if (!socket) return
+
+    const handleMessageEdited = (
+      updatedMessage: Message,
+    ) => {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg._id === updatedMessage._id
+            ? updatedMessage
+            : msg,
+        ),
+      )
+    }
+
+    socket.on(
+      "messageEdited",
+      handleMessageEdited,
+    )
+
+    return () => {
+      socket.off(
+        "messageEdited",
+        handleMessageEdited,
+      )
+    }
+  }, [socket])
+
+  useEffect(() => {
+    if (!socket) return
+
+    const handleMessageDeleted = (
+      deletedMessage: Message,
+    ) => {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg._id === deletedMessage._id
+            ? deletedMessage
+            : msg,
+        ),
+      )
+    }
+
+    socket.on(
+      "messageDeleted",
+      handleMessageDeleted,
+    )
+
+    return () => {
+      socket.off(
+        "messageDeleted",
+        handleMessageDeleted,
+      )
+    }
+  }, [socket])
   // Listen for incoming messages
   useEffect(() => {
     if (!socket) return
-    const handleMessage = (msg: Message) => { // CHANGED: Use Message instead of any
-      // Check if message is for current chat
-      if (
-        selectedUser &&
-        (msg.senderId === selectedUser._id ||
-          msg.receiverId === selectedUser._id ||
-          msg.senderId === selectedUser.id ||
-          msg.receiverId === selectedUser.id)
-      ) {
-        setMessages((msgs: Message[]) => [...msgs, msg]) // CHANGED: Use Message[] instead of any[]
-      }
 
-      // Update unseen counts
+    const handleMessage = (msg: Message) => {
+      setMessages((prev) => {
+        const exists = prev.some(
+          (m) => m._id === msg._id,
+        )
+
+        if (exists) return prev
+
+        return [...prev, msg]
+      })
+
       fetchUsers()
     }
+
     socket.on("newMessage", handleMessage)
+
     return () => {
       socket.off("newMessage", handleMessage)
     }
-  }, [socket, selectedUser, fetchUsers])
+  }, [socket])
 
   // Listen for online users list and update user statuses
   useEffect(() => {
@@ -400,6 +510,8 @@ export const MessageProvider = ({
         socket,
         socketConnected,
         socketError,
+        editMessage,
+        deleteMessage,
       }}
     >
       {children}

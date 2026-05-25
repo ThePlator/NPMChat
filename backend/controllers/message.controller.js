@@ -155,13 +155,18 @@ export const sendMessage = async (req, res) => {
       delivered: isReceiverOnline,
     })
 
-    if (isReceiverOnline) {
-      io.to(receiverId.toString()).emit("newMessage", newMessage) // Emit the new message to all receiver sockets
+    io.to(receiverId.toString()).emit(
+      "newMessage",
+      newMessage,
+    )
 
-      io.to(senderId.toString()).emit("messageDelivered", {
-        messageId: newMessage._id.toString(),
-      })
-    }
+    io.to(senderId.toString()).emit(
+      "messageDelivered",
+      {
+        messageId:
+          newMessage._id.toString(),
+      },
+    )
 
     res.status(201).json({
       message: "Message sent successfully.",
@@ -170,5 +175,127 @@ export const sendMessage = async (req, res) => {
   } catch (error) {
     console.error("Error sending message:", error)
     res.status(500).json({ message: "Internal server error." })
+  }
+}
+
+export const editMessage = async (req, res) => {
+  try {
+    const { messageId } = req.params
+    const { text } = req.body
+    const userId = req.user._id
+
+    const message = await Message.findById(messageId)
+
+    if (message.deleted) {
+      return res.status(400).json({
+        message: "Deleted messages cannot be edited.",
+      })
+    }
+
+    if (!message) {
+      return res.status(404).json({
+        message: "Message not found.",
+      })
+    }
+
+    if (message.senderId.toString() !== userId.toString()) {
+      return res.status(403).json({
+        message: "Unauthorized to edit this message.",
+      })
+    }
+
+    message.text = text
+    message.isEdited = true
+    message.editedAt = new Date()
+
+    await message.save()
+
+    const receiverSocketId =
+      userSockets.get(
+        message.receiverId.toString(),
+      )
+
+    const senderSocketId =
+      userSockets.get(
+        message.senderId.toString(),
+      )
+
+    io.to(message.receiverId.toString()).emit(
+      "messageEdited",
+      message,
+    )
+
+    io.to(message.senderId.toString()).emit(
+      "messageEdited",
+      message,
+    )
+
+    res.status(200).json({
+      message: "Message edited successfully.",
+      data: message,
+    })
+  } catch (error) {
+    console.error("Error editing message:", error)
+
+    res.status(500).json({
+      message: "Internal server error.",
+    })
+  }
+}
+
+export const deleteMessage = async (req, res) => {
+  try {
+    const { messageId } = req.params
+    const userId = req.user._id
+
+    const message = await Message.findById(messageId)
+
+    if (!message) {
+      return res.status(404).json({
+        message: "Message not found.",
+      })
+    }
+
+    if (message.senderId.toString() !== userId.toString()) {
+      return res.status(403).json({
+        message: "Unauthorized to delete this message.",
+      })
+    }
+
+    message.deleted = true
+    message.deletedAt = new Date()
+
+    await message.save()
+
+    const receiverSocketId =
+      userSockets.get(
+        message.receiverId.toString(),
+      )
+
+    const senderSocketId =
+      userSockets.get(
+        message.senderId.toString(),
+      )
+
+    io.to(message.receiverId.toString()).emit(
+      "messageDeleted",
+      message,
+    )
+
+    io.to(message.senderId.toString()).emit(
+      "messageDeleted",
+      message,
+    )
+
+    res.status(200).json({
+      message: "Message deleted successfully.",
+      data: message,
+    })
+  } catch (error) {
+    console.error("Error deleting message:", error)
+
+    res.status(500).json({
+      message: "Internal server error.",
+    })
   }
 }
