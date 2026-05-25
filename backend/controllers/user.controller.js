@@ -66,6 +66,7 @@ export const signup = async (req, res) => {
         .json({ message: "Email, password, and name are required." })
     }
 
+    // 1. Verify CAPTCHA (unless running tests)
     if (process.env.NODE_ENV !== "test") {
       if (!captchaToken) {
         return res.status(400).json({
@@ -86,6 +87,41 @@ export const signup = async (req, res) => {
           message: "CAPTCHA verification failed.",
         })
       }
+    } else {
+      // In test mode, if a captchaToken is sent, verify it
+      if (captchaToken) {
+        const isHuman = await verifyRecaptcha(captchaToken)
+        if (!isHuman) {
+          return res.status(400).json({
+            message: "CAPTCHA verification failed.",
+          })
+        }
+      }
+    }
+
+    // 2. Verify Email OTP Verification Token (Always required in all environments)
+    if (!emailVerificationToken) {
+      return res.status(400).json({
+        message: "Email verification token is required.",
+      })
+    }
+
+    try {
+      const decoded = jwt.verify(emailVerificationToken, process.env.JWT_SECRET)
+      if (decoded.type !== "email-verification") {
+        return res.status(400).json({
+          message: "Invalid email verification session.",
+        })
+      }
+      if (decoded.email !== email) {
+        return res.status(400).json({
+          message: "Email verification session does not match this signup email.",
+        })
+      }
+    } catch (err) {
+      return res.status(400).json({
+        message: "Email verification session has expired or is invalid.",
+      })
     }
 
     if (!emailVerificationToken) {
@@ -160,7 +196,15 @@ export const signup = async (req, res) => {
 }
 
 export const login = async (req, res) => {
-  const { email, password, captchaToken } = req.body
+    const { email, password, captchaToken } = req.body
+
+    try {
+      // Validate input
+      if (!email || !password) {
+        return res
+          .status(400)
+          .json({ message: "Email and password are required." })
+      }
 
   try {
     if (!email || !password) {
@@ -169,12 +213,7 @@ export const login = async (req, res) => {
         .json({ message: "Email and password are required." })
     }
 
-    if (process.env.NODE_ENV !== "test") {
-      if (!captchaToken) {
-        return res.status(400).json({
-          message: "CAPTCHA token is required.",
-        })
-      }
+        const isHuman = await verifyRecaptcha(captchaToken)
 
       const isHuman = await verifyRecaptcha(captchaToken)
       if (!isHuman) {
@@ -182,7 +221,6 @@ export const login = async (req, res) => {
           message: "CAPTCHA verification failed.",
         })
       }
-    }
 
     const user = await User.findOne({ email })
     if (!user) {
@@ -284,13 +322,12 @@ export const logout = async (req, res) => {
     console.error("Error during logout:", error)
     return res.status(500).json({ message: "Internal server error." })
   }
-}
 
-export const checkAuth = (req, res) => {
-  try {
-    if (!req.user) {
-      return res.status(401).json({ message: "Not authorized." })
-    }
+  export const checkAuth = (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Not authorized." })
+      }
 
     return res.status(200).json({
       user: {
@@ -305,39 +342,60 @@ export const checkAuth = (req, res) => {
     console.error("Error checking authentication:", error)
     return res.status(500).json({ message: "Internal server error." })
   }
-}
 
-export const forgotPassword = async (req, res) => {
-  const { email, captchaToken } = req.body
+  export const forgotPassword = async (req, res) => {
+    const { email, captchaToken } = req.body
 
-  try {
-    if (process.env.NODE_ENV !== "test") {
-      if (!captchaToken) {
-        return res.status(400).json({ message: "CAPTCHA token is required." })
+    try {
+      if (process.env.NODE_ENV !== "test") {
+        if (!captchaToken) {
+          return res.status(400).json({ message: "CAPTCHA token is required." })
+        }
+
+        const isHuman = await verifyRecaptcha(captchaToken)
+        if (!isHuman) {
+          return res.status(400).json({ message: "CAPTCHA verification failed." })
+        }
       }
 
-      const isHuman = await verifyRecaptcha(captchaToken)
-      if (!isHuman) {
-        return res.status(400).json({ message: "CAPTCHA verification failed." })
-      }
-    }
+      const user = await User.findOne({ email })
 
-    const user = await User.findOne({ email })
+      // Always return a generic success response to avoid user enumeration.
+      if (!user) {
+        return res.status(200).json({
+          message: "If an account exists for that email, a password reset link has been sent.",
+        })
+      }
+
+      const rawToken = crypto.randomBytes(32).toString("hex")
+      const tokenHash = hashResetToken(rawToken)
+
+      user.passwordResetTokenHash = tokenHash
+      user.passwordResetExpiresAt = resetTokenExpiryDate()
+      user.passwordResetUsedAt = null
+      await user.save()
+
+      const baseUrl = process.env.CLIENT_URL || "http://localhost:3000"
+      const resetUrl = `${baseUrl.replace(/\/$/, "")}/reset-password?token=${encodeURIComponent(rawToken)}`
+      await sendPasswordResetEmail({ to: user.email, resetUrl })
 
     if (!user) {
       return res.status(200).json({
         message:
           "If an account exists for that email, a password reset link has been sent.",
       })
+    } catch (error) {
+      console.error("Error during forgotPassword:", error)
+      return res.status(500).json({ message: "Internal server error." })
     }
+  }
 
-    const rawToken = crypto.randomBytes(32).toString("hex")
-    const tokenHash = hashResetToken(rawToken)
+  export const resetPassword = async (req, res) => {
+    const { token, password } = req.body
 
-    user.passwordResetTokenHash = tokenHash
-    user.passwordResetExpiresAt = resetTokenExpiryDate()
-    user.passwordResetUsedAt = null
-    await user.save()
+    try {
+      const tokenHash = hashResetToken(token)
+      const now = new Date()
 
     const baseUrl = process.env.CLIENT_URL || "http://localhost:3000"
     const resetUrl = `${baseUrl.replace(/\/$/, "")}/reset-password?token=${encodeURIComponent(rawToken)}`
@@ -352,24 +410,53 @@ export const forgotPassword = async (req, res) => {
     console.error("Error during forgotPassword:", error)
     return res.status(500).json({ message: "Internal server error." })
   }
-}
 
-export const resetPassword = async (req, res) => {
-  const { token, password } = req.body
+  // Controller to update user profile
+  export const updateProfile = async (req, res) => {
+    const { name, avatarUrl, bio } = req.body
+    const userId = req.user._id // Assuming user ID is available in req.user
+    let updatedData
 
-  try {
-    const tokenHash = hashResetToken(token)
-    const now = new Date()
+    try {
+      if (!avatarUrl) {
+        updatedData = await User.findByIdAndUpdate(
+          userId,
+          { name, bio },
+          { new: true },
+        )
+      } else {
+        const uploadedImage = await cloudinary.uploader.upload(avatarUrl)
 
-    const user = await User.findOne({
-      passwordResetTokenHash: tokenHash,
-      passwordResetUsedAt: null,
-      passwordResetExpiresAt: { $gt: now },
-    })
+        updatedData = await User.findByIdAndUpdate(
+          userId,
+          { name, avatarUrl: uploadedImage.secure_url, bio },
+          { new: true },
+        )
+      }
 
-    if (!user) {
-      return res.status(400).json({ message: "Invalid or expired reset token." })
+      res.status(200).json({
+        message: "Profile updated successfully.",
+        user: {
+          id: updatedData._id,
+          email: updatedData.email,
+          name: updatedData.name,
+          avatarUrl: updatedData.avatarUrl,
+          bio: updatedData.bio,
+        },
+      })
+    } catch (error) {
+      console.error("Error updating profile:", error)
+      res.status(500).json({ message: "Internal server error." })
     }
+  }
+
+  export const sendOTP = async (req, res) => {
+    const { email, captchaToken } = req.body
+
+    try {
+      if (!email) {
+        return res.status(400).json({ message: "Email is required." })
+      }
 
     const salt = await bcrypt.genSalt(10)
     const hashedPassword = await bcrypt.hash(password, salt)
@@ -380,12 +467,36 @@ export const resetPassword = async (req, res) => {
     user.passwordResetExpiresAt = null
     await user.save()
 
-    return res.status(200).json({ message: "Password reset successful." })
-  } catch (error) {
-    console.error("Error during resetPassword:", error)
-    return res.status(500).json({ message: "Internal server error." })
+      // Check if user already exists
+      const existingUser = await User.findOne({ email })
+      if (existingUser) {
+        return res.status(400).json({ message: "User already exists." })
+      }
+
+      // Generate a 6-digit numeric OTP
+      const otp = Math.floor(100000 + Math.random() * 900000).toString()
+
+      // Delete any existing OTPs for this email to avoid duplicates
+      await OTP.deleteMany({ email })
+
+      // Save to temporary OTP collection
+      const newOTP = new OTP({ email, otp })
+      await newOTP.save()
+
+      // Dispatch the email
+      const emailResult = await sendOTPEmail(email, otp)
+
+      res.status(200).json({
+        message: emailResult.devMode
+          ? "OTP generated (logged to console in development mode)."
+          : "OTP sent successfully to your email.",
+        devMode: emailResult.devMode,
+      })
+    } catch (error) {
+      console.error("Error sending OTP:", error)
+      res.status(500).json({ message: "Internal server error." })
+    }
   }
-}
 
 export const updateProfile = async (req, res) => {
   const { name, avatarUrl, bio } = req.body
@@ -403,12 +514,23 @@ export const updateProfile = async (req, res) => {
     } else {
       const uploadedImage = await cloudinary.uploader.upload(avatarUrl)
 
-      updatedData = await User.findByIdAndUpdate(
-        userId,
-        { name, avatarUrl: uploadedImage.secure_url, bio },
-        { new: true },
+      if (!otpRecord) {
+        return res.status(400).json({ message: "OTP has expired or does not exist. Please request a new one." })
+      }
+
+      if (otpRecord.otp !== otp) {
+        return res.status(400).json({ message: "Invalid OTP code." })
+      }
+
+      // Valid OTP - Delete OTP records for this email
+      await OTP.deleteMany({ email })
+
+      // Generate email verification token (valid for 15 minutes)
+      const emailVerificationToken = jwt.sign(
+        { email, type: "email-verification" },
+        process.env.JWT_SECRET,
+        { expiresIn: "15m" }
       )
-    }
 
     return res.status(200).json({
       message: "Profile updated successfully.",
