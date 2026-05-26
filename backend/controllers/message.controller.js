@@ -186,15 +186,15 @@ export const editMessage = async (req, res) => {
 
     const message = await Message.findById(messageId)
 
-    if (message.deleted) {
-      return res.status(400).json({
-        message: "Deleted messages cannot be edited.",
-      })
-    }
-
     if (!message) {
       return res.status(404).json({
         message: "Message not found.",
+      })
+    }
+
+    if (message.deleted) {
+      return res.status(400).json({
+        message: "Deleted messages cannot be edited.",
       })
     }
 
