@@ -1,4 +1,5 @@
 "use client"
+import OAuthButtons from '@/components/OAuthButtons'
 import React, { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -136,7 +137,7 @@ function LoginPageContent() {
           className="mt-2 border-2 border-black bg-[#b39ddb] text-black dark:text-white font-extrabold text-lg py-2 rounded-none transition-all cursor-[url('/custom-cursor-click.svg'),_pointer] hover:bg-[#39ff14] hover:text-white focus:outline-none"
           style={{ boxShadow: `4px 4px 0 0 ${accent}` }}
         >
-          {loading ? "Logging In..." : "Login 2"}
+          {loading ? "Logging In..." : "Login"}
         </button>
         <div className="text-center mt-2">
           <Link
@@ -154,7 +155,9 @@ function LoginPageContent() {
             Forgot password?
           </Link>
         </div>
+        <OAuthButtons label="Log in" />
       </form>
+      
       {/* Floating accent shape bottom left */}
       <div className="absolute bottom-0 left-0 w-32 h-32 bg-[#b39ddb] border-2 border-black rotate-12 opacity-50 z-0"></div>
     </main>

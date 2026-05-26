@@ -10,9 +10,10 @@ import { Eye, EyeOff, ArrowLeft } from "lucide-react"
 import ReCAPTCHA from "react-google-recaptcha"
 import { api } from "../fetcher"
 import OTPInput from "../../components/OTPInput"
+import OAuthButtons from '@/components/OAuthButtons'
 
-const accent = "#b39ddb" // pastel purple
-const accentGreen = "#39ff14" // neon green
+const accent = "#b39ddb"
+const accentGreen = "#39ff14"
 
 function SignupPageContent() {
   const [passwordStrength, setPasswordStrength] = useState<{
@@ -29,21 +30,18 @@ function SignupPageContent() {
     name?: string
   }>({})
 
-  // OTP Verification States
-  const [step, setStep] = useState(1) // 1 = Details, 2 = OTP Entry
+  const [step, setStep] = useState(1)
   const [otpValue, setOtpValue] = useState("")
   const [cooldown, setCooldown] = useState(0)
   const [sendingOtp, setSendingOtp] = useState(false)
   const [verifyingOtp, setVerifyingOtp] = useState(false)
   const [hidePassword, setHidePassword] = useState(true)
 
-  // Recatcha state
   const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY
   const [captchaToken, setCaptchaToken] = useState<string | null>(
     recaptchaSiteKey ? null : "bypassed",
   )
 
-  // Handle Resend Cooldown Countdown
   useEffect(() => {
     if (cooldown === 0) return
     const interval = setInterval(() => {
@@ -71,13 +69,12 @@ function SignupPageContent() {
       toast.error("Please complete CAPTCHA verification")
       return
     }
-
     setSendingOtp(true)
     try {
       await api.post("/send-otp", { email: form.email, captchaToken }, "auth")
       toast.success("OTP verification code sent to your email!")
       setStep(2)
-      setCooldown(60) // Start 60-second cooldown
+      setCooldown(60)
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to send OTP"
       setErrors({ email: message })
@@ -91,14 +88,12 @@ function SignupPageContent() {
     if (cooldown > 0 || sendingOtp) return
     setSendingOtp(true)
     try {
-      // reCAPTCHA is bypassed on resend if an OTP already exists in the backend
       await api.post("/send-otp", { email: form.email }, "auth")
       toast.success("A new verification code has been sent!")
       setCooldown(60)
       setOtpValue("")
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Failed to resend OTP."
+      const message = err instanceof Error ? err.message : "Failed to resend OTP."
       toast.error(message)
     } finally {
       setSendingOtp(false)
@@ -111,27 +106,17 @@ function SignupPageContent() {
       toast.error("Please enter the 6-digit verification code.")
       return
     }
-
     setVerifyingOtp(true)
     try {
-      // 1. Verify OTP with the backend to obtain an emailVerificationToken
       const verifyRes = await api.post(
         "/verify-otp",
         { email: form.email, otp: otpValue },
         "auth",
       )
       const { emailVerificationToken } = verifyRes
-
-      // 2. Finalize account creation
-      await signup({
-        ...form,
-        emailVerificationToken,
-      })
-
+      await signup({ ...form, emailVerificationToken })
       toast.success("Account created successfully!")
-      setTimeout(() => {
-        router.push("/chat")
-      }, 1500)
+      setTimeout(() => { router.push("/chat") }, 1500)
     } catch (err: unknown) {
       const message =
         err instanceof Error
@@ -145,25 +130,22 @@ function SignupPageContent() {
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#b39ddb]/40 via-white to-[#39ff14]/20 relative overflow-hidden">
-      {/* Floating accent shape */}
       <div className="absolute -top-10 -left-10 w-40 h-40 bg-[#b39ddb] border-2 border-black rotate-12 opacity-60 z-0"></div>
 
       {step === 1 ? (
         <form
           onSubmit={handleRequestOtp}
-          className="relative z-10 w-full max-w-sm p-8 border-2 border-black bg-card text-foreground flex flex-col gap-6 shadow-lg brutal-shadow hover:brutal-shadow-hover"
+          className="relative z-10 w-full max-w-sm p-8 border-2 border-black bg-card text-foreground flex flex-col gap-6 shadow-lg"
           style={{ boxShadow: `8px 8px 0 0 ${accent}` }}
         >
-          <h1
-            className="text-3xl font-extrabold mb-2 text-foreground"
-            style={{ letterSpacing: -1 }}
-          >
+          <h1 className="text-3xl font-extrabold mb-2 text-foreground" style={{ letterSpacing: -1 }}>
             Create Your <span style={{ color: accent }}>NPMChat</span> Account
           </h1>
+
           <label className="flex flex-col gap-1 text-foreground font-bold text-lg">
             Full Name
             <input
-              className="border-2 border-black px-4 py-2 text-lg bg-card/90 dark:bg-input/70 text-foreground focus:bg-input/90 focus:outline-none focus:border-[${accent}] transition-all cursor-[url('/custom-cursor-arrow.svg'),_pointer]"
+              className="border-2 border-black px-4 py-2 text-lg bg-card/90 dark:bg-input/70 text-foreground focus:bg-input/90 focus:outline-none transition-all cursor-[url('/custom-cursor-arrow.svg'),_pointer]"
               type="text"
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
@@ -171,34 +153,30 @@ function SignupPageContent() {
               required
             />
             {errors.name && (
-              <span className="text-red-600 text-sm font-normal">
-                {errors.name}
-              </span>
+              <span className="text-red-600 text-sm font-normal">{errors.name}</span>
             )}
           </label>
+
           <label className="flex flex-col gap-1 text-foreground font-bold text-lg">
             Email
             <input
-              className="border-2 border-black px-4 py-2 text-lg bg-card/90 dark:bg-input/70 text-foreground focus:bg-input/90 focus:outline-none focus:border-[${accent}] transition-all cursor-[url('/custom-cursor-arrow.svg'),_pointer]"
+              className="border-2 border-black px-4 py-2 text-lg bg-card/90 dark:bg-input/70 text-foreground focus:bg-input/90 focus:outline-none transition-all cursor-[url('/custom-cursor-arrow.svg'),_pointer]"
               type="email"
               value={form.email}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, email: e.target.value }))
-              }
+              onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
               autoComplete="email"
               required
             />
             {errors.email && (
-              <span className="text-red-600 text-sm font-normal">
-                {errors.email}
-              </span>
+              <span className="text-red-600 text-sm font-normal">{errors.email}</span>
             )}
           </label>
+
           <label className="flex flex-col gap-1 text-foreground font-bold text-lg relative">
             Password
             <div className="relative w-full">
               <input
-                className="border-2 border-black px-4 py-2 text-lg bg-card/90 dark:bg-input/70 text-foreground focus:bg-input/90 focus:outline-none focus:border-[${accentGreen}] transition-all cursor-[url('/custom-cursor-arrow.svg'),_pointer] w-full pr-10"
+                className="border-2 border-black px-4 py-2 text-lg bg-card/90 dark:bg-input/70 text-foreground focus:bg-input/90 focus:outline-none transition-all cursor-[url('/custom-cursor-arrow.svg'),_pointer] w-full pr-10"
                 type={hidePassword ? "password" : "text"}
                 value={form.password}
                 onChange={(e) => {
@@ -213,7 +191,6 @@ function SignupPageContent() {
                 autoComplete="new-password"
                 required
               />
-
               <button
                 type="button"
                 onClick={() => setHidePassword(!hidePassword)}
@@ -226,40 +203,30 @@ function SignupPageContent() {
             {form.password && (
               <div className="mt-1 text-sm font-bold">
                 <div
-                  className={`h-2 rounded-sm transition-all`}
+                  className="h-2 rounded-sm transition-all"
                   style={{
                     width: `${(passwordStrength.score + 1) * 20}%`,
                     backgroundColor:
-                      passwordStrength.score < 2
-                        ? "red"
-                        : passwordStrength.score === 2
-                          ? "orange"
-                          : passwordStrength.score === 3
-                            ? "#ffd700"
-                            : "green",
+                      passwordStrength.score < 2 ? "red"
+                      : passwordStrength.score === 2 ? "orange"
+                      : passwordStrength.score === 3 ? "#ffd700"
+                      : "green",
                   }}
                 />
                 <div className="mt-1 text-black">
                   Strength:{" "}
-                  {
-                    ["Too Weak", "Weak", "Fair", "Good", "Strong"][
-                      passwordStrength.score
-                    ]
-                  }
+                  {["Too Weak", "Weak", "Fair", "Good", "Strong"][passwordStrength.score]}
                 </div>
                 {passwordStrength.feedback && (
-                  <div className="text-xs text-gray-600 mt-1">
-                    {passwordStrength.feedback}
-                  </div>
+                  <div className="text-xs text-gray-600 mt-1">{passwordStrength.feedback}</div>
                 )}
               </div>
             )}
             {errors.password && (
-              <span className="text-red-600 text-sm font-normal">
-                {errors.password}
-              </span>
+              <span className="text-red-600 text-sm font-normal">{errors.password}</span>
             )}
           </label>
+
           {recaptchaSiteKey && (
             <div className="flex justify-center">
               <ReCAPTCHA
@@ -268,6 +235,7 @@ function SignupPageContent() {
               />
             </div>
           )}
+
           <button
             type="submit"
             disabled={sendingOtp}
@@ -276,19 +244,22 @@ function SignupPageContent() {
           >
             {sendingOtp ? "Requesting OTP..." : "Verify Email"}
           </button>
+
           <div className="text-center mt-2">
             <Link
               href="/login"
-              className="underline text-foreground font-bold cursor-[url('/custom-cursor-click.svg'),_pointer] hover:text-[${accent}]"
+              className="underline text-foreground font-bold cursor-[url('/custom-cursor-click.svg'),_pointer]"
             >
               Already have an account? Login
             </Link>
           </div>
+
+          <OAuthButtons label="Sign up" />
         </form>
       ) : (
         <form
           onSubmit={handleVerifyAndSignup}
-          className="relative z-10 w-full max-w-sm p-8 border-2 border-black bg-card text-foreground flex flex-col gap-6 shadow-lg brutal-shadow hover:brutal-shadow-hover"
+          className="relative z-10 w-full max-w-sm p-8 border-2 border-black bg-card text-foreground flex flex-col gap-6 shadow-lg"
           style={{ boxShadow: `8px 8px 0 0 ${accent}` }}
         >
           <div>
@@ -299,10 +270,7 @@ function SignupPageContent() {
             >
               <ArrowLeft className="w-4 h-4" /> Edit Details
             </button>
-            <h1
-              className="text-3xl font-extrabold mb-2 text-black"
-              style={{ letterSpacing: -1 }}
-            >
+            <h1 className="text-3xl font-extrabold mb-2 text-black" style={{ letterSpacing: -1 }}>
               Enter <span style={{ color: accent }}>OTP Code</span>
             </h1>
             <p className="text-sm font-bold text-muted-foreground mt-2">
@@ -341,7 +309,6 @@ function SignupPageContent() {
         </form>
       )}
 
-      {/* Floating accent shape bottom right */}
       <div className="absolute bottom-0 right-0 w-32 h-32 bg-[#39ff14] border-2 border-black -rotate-12 opacity-50 z-0"></div>
     </main>
   )
