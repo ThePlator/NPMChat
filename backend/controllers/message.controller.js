@@ -96,7 +96,10 @@ export const markMessagesAsSeen = async (req, res) => {
 
     if (!message) {
       // If already seen or not found, still return 200 if it belongs to this receiver
-      const existingMessage = await Message.findOne({ _id: messageId, receiverId })
+      const existingMessage = await Message.findOne({
+        _id: messageId,
+        receiverId,
+      })
       if (existingMessage) {
         return res.status(200).json(existingMessage)
       }
@@ -155,18 +158,11 @@ export const sendMessage = async (req, res) => {
       delivered: isReceiverOnline,
     })
 
-    io.to(receiverId.toString()).emit(
-      "newMessage",
-      newMessage,
-    )
+    io.to(receiverId.toString()).emit("newMessage", newMessage)
 
-    io.to(senderId.toString()).emit(
-      "messageDelivered",
-      {
-        messageId:
-          newMessage._id.toString(),
-      },
-    )
+    io.to(senderId.toString()).emit("messageDelivered", {
+      messageId: newMessage._id.toString(),
+    })
 
     res.status(201).json({
       message: "Message sent successfully.",
@@ -210,25 +206,13 @@ export const editMessage = async (req, res) => {
 
     await message.save()
 
-    const receiverSocketId =
-      userSockets.get(
-        message.receiverId.toString(),
-      )
+    const receiverSocketId = userSockets.get(message.receiverId.toString())
 
-    const senderSocketId =
-      userSockets.get(
-        message.senderId.toString(),
-      )
+    const senderSocketId = userSockets.get(message.senderId.toString())
 
-    io.to(message.receiverId.toString()).emit(
-      "messageEdited",
-      message,
-    )
+    io.to(message.receiverId.toString()).emit("messageEdited", message)
 
-    io.to(message.senderId.toString()).emit(
-      "messageEdited",
-      message,
-    )
+    io.to(message.senderId.toString()).emit("messageEdited", message)
 
     res.status(200).json({
       message: "Message edited successfully.",
@@ -267,25 +251,13 @@ export const deleteMessage = async (req, res) => {
 
     await message.save()
 
-    const receiverSocketId =
-      userSockets.get(
-        message.receiverId.toString(),
-      )
+    const receiverSocketId = userSockets.get(message.receiverId.toString())
 
-    const senderSocketId =
-      userSockets.get(
-        message.senderId.toString(),
-      )
+    const senderSocketId = userSockets.get(message.senderId.toString())
 
-    io.to(message.receiverId.toString()).emit(
-      "messageDeleted",
-      message,
-    )
+    io.to(message.receiverId.toString()).emit("messageDeleted", message)
 
-    io.to(message.senderId.toString()).emit(
-      "messageDeleted",
-      message,
-    )
+    io.to(message.senderId.toString()).emit("messageDeleted", message)
 
     res.status(200).json({
       message: "Message deleted successfully.",
@@ -297,5 +269,44 @@ export const deleteMessage = async (req, res) => {
     res.status(500).json({
       message: "Internal server error.",
     })
+  }
+}
+
+export const getMediaMessages = async (req, res) => {
+  try {
+    const { userId } = req.params
+    const currentUserId = req.user._id
+    const limit = parseInt(req.query.limit) || 20
+    const page = parseInt(req.query.page) || 1
+    const skip = (page - 1) * limit
+
+    const messages = await Message.find({
+      $or: [
+        { senderId: currentUserId, receiverId: userId },
+        { senderId: userId, receiverId: currentUserId },
+      ],
+      image: { $ne: "", $exists: true },
+    })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+
+    const totalMedia = await Message.countDocuments({
+      $or: [
+        { senderId: currentUserId, receiverId: userId },
+        { senderId: userId, receiverId: currentUserId },
+      ],
+      image: { $ne: "", $exists: true },
+    })
+
+    res.status(200).json({
+      messages,
+      totalMedia,
+      currentPage: page,
+      totalPages: Math.ceil(totalMedia / limit),
+    })
+  } catch (error) {
+    console.error("Error fetching media messages:", error)
+    res.status(500).json({ message: "Internal server error." })
   }
 }

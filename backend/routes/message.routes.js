@@ -2,11 +2,12 @@ import express from "express"
 import { protectRoute } from "../middleware/auth.js"
 import {
   getMessages,
+  getMediaMessages,
   getUserForSidebar,
   markMessagesAsSeen,
   sendMessage,
   editMessage,
-  deleteMessage
+  deleteMessage,
 } from "../controllers/message.controller.js"
 
 const messageRouter = express.Router()
@@ -35,6 +36,31 @@ const messageRouter = express.Router()
  *         description: Internal server error
  */
 messageRouter.get("/", protectRoute, getUserForSidebar)
+
+/**
+ * @swagger
+ * /api/v1/messages/media/{userId}:
+ *   get:
+ *     summary: Get media messages (images) exchanged with a user
+ *     tags: [Messages]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: User ID to fetch media messages for
+ *     responses:
+ *       200:
+ *         description: Paginated media messages
+ *       401:
+ *         description: Missing or invalid JWT
+ *       500:
+ *         description: Internal server error
+ */
+messageRouter.get("/media/:userId", protectRoute, getMediaMessages)
 
 /**
  * @swagger
