@@ -1,5 +1,9 @@
-import express from "express"
 import "dotenv/config"
+
+import passport from './lib/passport.js'
+import oauthRouter from './routes/auth.oauth.routes.js'
+import express from "express"
+
 import cors from "cors"
 import http from "http"
 import helmet from "helmet"
@@ -96,7 +100,7 @@ io.on("connection", (socket) => {
 })
 
 app.use(express.json({ limit: "4mb" }))
-
+app.use(passport.initialize())
 // 4. Routes with Rate Limiting applied
 app.use("/api/status", (req, res) => {
   res.status(200).json({ status: "ok" })
@@ -118,8 +122,8 @@ app.use("/api/health", (req, res) => {
 
 // Apply strict limiter to auth routes, and standard limiter to message routes
 app.use("/api/v1/auth", authLimiter, userRouter)
+app.use("/api/v1/auth", authLimiter, oauthRouter)  
 app.use("/api/v1/messages", standardLimiter, messageRouter)
-
 app.use("/", (req, res) => {
   res.send("NPMChat API is running")
 })

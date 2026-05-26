@@ -7,7 +7,7 @@ import ProtectedRoute from "../../components/ProtectedRoute"
 import zxcvbn from "zxcvbn"
 import { toast } from "sonner"
 import { Eye, EyeOff } from "lucide-react"
-
+import OAuthButtons from '@/components/OAuthButtons'
 const accent = "#b39ddb" // pastel purple
 const accentGreen = "#39ff14" // neon green
 
@@ -173,7 +173,7 @@ function SignupPageContent() {
           className="mt-2 border-2 border-black bg-[#39ff14] text-black font-extrabold text-lg py-2 rounded-none transition-all cursor-[url('/custom-cursor-click.svg'),_pointer] hover:bg-[#b39ddb] hover:text-white focus:outline-none"
           style={{ boxShadow: `4px 4px 0 0 ${accentGreen}` }}
         >
-          {loading ? "Signing Up..." : "Sign Up 2"}
+          {loading ? "Signing Up..." : "Sign Up"}
         </button>
         <div className="text-center mt-2">
           <Link
@@ -183,7 +183,9 @@ function SignupPageContent() {
             Already have an account? Login
           </Link>
         </div>
+            <OAuthButtons label="Sign up" />
       </form>
+
       {/* Floating accent shape bottom right */}
       <div className="absolute bottom-0 right-0 w-32 h-32 bg-[#39ff14] border-2 border-black -rotate-12 opacity-50 z-0"></div>
     </main>

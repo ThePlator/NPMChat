@@ -10,8 +10,9 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: true,
+      required: false,  
       minlength: 6,
+      default: null,
     },
     name: {
       type: String,
@@ -19,10 +20,20 @@ const userSchema = new mongoose.Schema(
     },
     avatarUrl: {
       type: String,
-      default: "", // Default profile picture URL
+      default: "",
     },
     bio: {
       type: String,
+    },
+    googleId: {          
+      type: String,
+      default: null,
+      index: true,
+    },
+    githubId: {          
+      type: String,
+      default: null,
+      index: true,
     },
   },
   { timestamps: true },
