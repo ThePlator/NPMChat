@@ -1,5 +1,7 @@
 "use client"
 import React from "react"
+import { getInitials } from "../../lib/utils"
+
 
 export default function ChatSidebar({
   users,
@@ -18,7 +20,6 @@ export default function ChatSidebar({
   search: string
   setSearch: (s: string) => void
 }) {
-  console.log("users", users)
   return (
     <aside className="flex flex-col w-full md:w-80 bg-[#e9d5ff] dark:bg-background border-r-2 border-sidebar-border  h-full">
       {/* Logo */}
@@ -54,15 +55,17 @@ export default function ChatSidebar({
               }
             `}
           >
-            <div className="w-10 h-10 rounded-full bg-[#39ff14] flex items-center justify-center text-xl font-extrabold border-2 border-sidebar-border ">
+            <div className="w-10 h-10 rounded-full bg-[#39ff14] flex items-center justify-center text-lg font-extrabold border-2 border-sidebar-border overflow-hidden select-none">
               {user.avatarUrl ? (
                 <img
                   src={user.avatarUrl}
                   alt={user.name}
-                  className="w-full h-full object-cover rounded-full"
+                  className="w-full h-full object-cover"
                 />
               ) : (
-                user.name[0]
+                <span className="flex items-center justify-center w-full h-full text-black uppercase">
+                  {getInitials(user.name)}
+                </span>
               )}
             </div>
             <div className="flex-1 min-w-0">

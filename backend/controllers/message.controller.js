@@ -1,14 +1,16 @@
 import Message from "../models/Message.js"
 import User from "../models/User.js"
 import cloudinary from "../lib/cloudinary.js"
-import { io, userSocketMap } from "../server.js"
+import { io, userSockets } from "../server.js"
 
 export const getUserForSidebar = async (req, res) => {
   try {
     const userId = req.user._id // Get the user ID from the request object
 
     const [filteredUser, unseenMessageCounts] = await Promise.all([
-      User.find({ _id: { $ne: userId } }).select("-password").lean(),
+      User.find({ _id: { $ne: userId } })
+        .select("-password -refreshTokenHash -refreshTokenId")
+        .lean(),
       Message.aggregate([
         {
           $match: {
@@ -61,10 +63,16 @@ export const getMessages = async (req, res) => {
     }).sort({ createdAt: 1 }) // Sort messages by creation date
 
     // Mark messages as seen if they are from the selected user
-    await Message.updateMany(
+    const updateResult = await Message.updateMany(
       { senderId: userId, receiverId: currentUserId, seen: false },
       { $set: { seen: true } },
     )
+
+    if (updateResult.modifiedCount > 0) {
+      io.to(userId.toString()).emit("messageSeen", {
+        userId: currentUserId.toString(),
+      })
+    }
 
     res.status(200).json(messages)
   } catch (error) {
@@ -77,20 +85,47 @@ export const getMessages = async (req, res) => {
 export const markMessagesAsSeen = async (req, res) => {
   try {
     const { messageId } = req.params // Get the messageId from the request parameters
-    // Update the message to mark it as seen
-    const updatedMessage = await Message.findByIdAndUpdate(
-      messageId,
-      { seen: true },
-      { new: true },
-    )
+    const receiverId = req.user._id
 
-    if (!updatedMessage) {
+    // Safe flow: find the message first to get senderId and ensure it's for this receiver
+    const message = await Message.findOne({
+      _id: messageId,
+      receiverId,
+      seen: false,
+    })
+
+    if (!message) {
+      // If already seen or not found, still return 200 if it belongs to this receiver
+      const existingMessage = await Message.findOne({ _id: messageId, receiverId })
+      if (existingMessage) {
+        return res.status(200).json(existingMessage)
+      }
       return res
         .status(404)
-        .json({ message: "Message not found or already seen." })
+        .json({ message: "Message not found or unauthorized." })
     }
 
-    res.status(200).json(updatedMessage)
+    const senderId = message.senderId
+
+    message.seen = true
+    try {
+      await message.save()
+    } catch (saveErr) {
+      if (saveErr.name === "VersionError") {
+        // Message was concurrently modified, fetch latest and return
+        const updated = await Message.findById(message._id)
+        return res.status(200).json(updated)
+      }
+      throw saveErr
+    }
+
+    // Notify the original sender
+    io.to(senderId.toString()).emit("messageSeen", {
+      userId: receiverId.toString(),
+      messageId: message._id.toString(),
+    })
+
+    res.status(200).json(message)
   } catch (error) {
     console.error("Error marking message as seen:", error)
     res.status(500).json({ message: "Internal server error." })
@@ -110,17 +145,28 @@ export const sendMessage = async (req, res) => {
       imageUrl = uploadedImage.secure_url // Get the secure URL of the uploaded image
     }
 
+    const isReceiverOnline = userSockets.has(receiverId.toString())
+
     const newMessage = await Message.create({
       senderId,
       receiverId,
       text,
       image: imageUrl || "",
+      delivered: isReceiverOnline,
     })
 
-    const receiverSocketId = userSocketMap[receiverId] // Get the socket ID of the receiver
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit("newMessage", newMessage) // Emit the new message to the receiver
-    }
+    io.to(receiverId.toString()).emit(
+      "newMessage",
+      newMessage,
+    )
+
+    io.to(senderId.toString()).emit(
+      "messageDelivered",
+      {
+        messageId:
+          newMessage._id.toString(),
+      },
+    )
 
     res.status(201).json({
       message: "Message sent successfully.",
@@ -129,5 +175,127 @@ export const sendMessage = async (req, res) => {
   } catch (error) {
     console.error("Error sending message:", error)
     res.status(500).json({ message: "Internal server error." })
+  }
+}
+
+export const editMessage = async (req, res) => {
+  try {
+    const { messageId } = req.params
+    const { text } = req.body
+    const userId = req.user._id
+
+    const message = await Message.findById(messageId)
+
+    if (message.deleted) {
+      return res.status(400).json({
+        message: "Deleted messages cannot be edited.",
+      })
+    }
+
+    if (!message) {
+      return res.status(404).json({
+        message: "Message not found.",
+      })
+    }
+
+    if (message.senderId.toString() !== userId.toString()) {
+      return res.status(403).json({
+        message: "Unauthorized to edit this message.",
+      })
+    }
+
+    message.text = text
+    message.isEdited = true
+    message.editedAt = new Date()
+
+    await message.save()
+
+    const receiverSocketId =
+      userSockets.get(
+        message.receiverId.toString(),
+      )
+
+    const senderSocketId =
+      userSockets.get(
+        message.senderId.toString(),
+      )
+
+    io.to(message.receiverId.toString()).emit(
+      "messageEdited",
+      message,
+    )
+
+    io.to(message.senderId.toString()).emit(
+      "messageEdited",
+      message,
+    )
+
+    res.status(200).json({
+      message: "Message edited successfully.",
+      data: message,
+    })
+  } catch (error) {
+    console.error("Error editing message:", error)
+
+    res.status(500).json({
+      message: "Internal server error.",
+    })
+  }
+}
+
+export const deleteMessage = async (req, res) => {
+  try {
+    const { messageId } = req.params
+    const userId = req.user._id
+
+    const message = await Message.findById(messageId)
+
+    if (!message) {
+      return res.status(404).json({
+        message: "Message not found.",
+      })
+    }
+
+    if (message.senderId.toString() !== userId.toString()) {
+      return res.status(403).json({
+        message: "Unauthorized to delete this message.",
+      })
+    }
+
+    message.deleted = true
+    message.deletedAt = new Date()
+
+    await message.save()
+
+    const receiverSocketId =
+      userSockets.get(
+        message.receiverId.toString(),
+      )
+
+    const senderSocketId =
+      userSockets.get(
+        message.senderId.toString(),
+      )
+
+    io.to(message.receiverId.toString()).emit(
+      "messageDeleted",
+      message,
+    )
+
+    io.to(message.senderId.toString()).emit(
+      "messageDeleted",
+      message,
+    )
+
+    res.status(200).json({
+      message: "Message deleted successfully.",
+      data: message,
+    })
+  } catch (error) {
+    console.error("Error deleting message:", error)
+
+    res.status(500).json({
+      message: "Internal server error.",
+    })
   }
 }

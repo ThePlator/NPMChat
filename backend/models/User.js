@@ -8,22 +8,53 @@ const userSchema = new mongoose.Schema(
       unique: true,
       lowercase: true,
     },
+
     password: {
       type: String,
       required: false,  
       minlength: 6,
       default: null,
     },
+
     name: {
       type: String,
       required: true,
     },
+
     avatarUrl: {
       type: String,
       default: "",
     },
+
     bio: {
       type: String,
+      default: "",
+    },
+
+    refreshTokenHash: {
+      type: String,
+      default: null,
+    },
+
+    refreshTokenId: {
+      type: String,
+      default: null,
+    },
+
+    passwordResetTokenHash: {
+      type: String,
+      default: null,
+      index: true,
+    },
+
+    passwordResetExpiresAt: {
+      type: Date,
+      default: null,
+    },
+
+    passwordResetUsedAt: {
+      type: Date,
+      default: null,
     },
     googleId: {          
       type: String,
