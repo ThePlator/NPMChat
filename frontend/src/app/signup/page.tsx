@@ -6,6 +6,7 @@ import { useAuth } from "../AuthContext"
 import ProtectedRoute from "../../components/ProtectedRoute"
 import zxcvbn from "zxcvbn"
 import { toast } from "sonner"
+import OAuthButtons from '@/components/OAuthButtons'
 import { Eye, EyeOff, ArrowLeft } from "lucide-react"
 import ReCAPTCHA from "react-google-recaptcha"
 import { api } from "../fetcher"
@@ -257,7 +258,7 @@ function SignupPageContent() {
               />
             </div>
           )}
-          <button
+<button
             type="submit"
             disabled={sendingOtp}
             className="mt-2 border-2 border-black bg-[#39ff14] text-black font-extrabold text-lg py-2 rounded-none transition-all cursor-[url('/custom-cursor-click.svg'),_pointer] hover:bg-[#b39ddb] hover:text-white focus:outline-none"
@@ -273,6 +274,7 @@ function SignupPageContent() {
               Already have an account? Login
             </Link>
           </div>
+          <OAuthButtons label="Sign up" />
         </form>
       ) : (
         <form
