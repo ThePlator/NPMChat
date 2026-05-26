@@ -4,6 +4,7 @@ import { AuthProvider } from "./AuthContext"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
 import SmoothScroll from "@/components/SmoothScroll" // Import the new component
+import { SettingsProvider } from "./SettingsContext"
 
 export const metadata: Metadata = {
   title: "NPMChat",
@@ -24,9 +25,12 @@ export default function RootLayout({
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
+          themes={['light', 'dark', 'dracula', 'nord', 'synthwave', 'github-light', 'github-dark']}
         >
-          <AuthProvider>{children}</AuthProvider>
-          <Toaster richColors />
+          <SettingsProvider>
+            <AuthProvider>{children}</AuthProvider>
+            <Toaster richColors />
+          </SettingsProvider>
         </ThemeProvider>
       </body>
     </html>

@@ -9,6 +9,7 @@ import { TypingIndicator } from "./TypingIndicator"
 import EmojiPicker from "emoji-picker-react"
 import { ModeToggle } from "../ui/mode-toggle"
 import { Check, CheckCheck } from "lucide-react"
+import { SettingsDrawer } from "../ui/settings-drawer"
 
 function MessageTick({
   seen,
@@ -60,7 +61,7 @@ export default function ChatPanel({
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
   const [editedText, setEditedText] = useState("")
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null)
-
+  const [showSettings, setShowSettings] = useState(false)
 
   const { typingUsers, handleTyping } = useTypingIndicator(
     selectedUser?._id || "",
@@ -266,7 +267,7 @@ export default function ChatPanel({
         <div className="flex justify-between w-full px-2">
           <div className="flex flex-col">
             <span
-              className="text-lg font-extrabold text-primary cursor-pointer hover:text-[#39ff14]"
+              className="text-lg font-extrabold text-primary cursor-pointer hover:text-[var(--color-neon-green)]"
               onClick={() => setShowUserDetails(true)}
               title="View profile"
             >
@@ -274,7 +275,7 @@ export default function ChatPanel({
             </span>
             <span
               className={`text-sm font-bold ${selectedUser && selectedUser.status === "online"
-                ? "text-[#39ff14]"
+                ? "text-[var(--color-neon-green)]"
                 : "text-gray-400"
                 }`}
             >
@@ -283,9 +284,20 @@ export default function ChatPanel({
                 : "offline"}
             </span>
           </div>
-          <ModeToggle />
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowSettings(true)}
+              className="p-2 rounded-full border-2 border-sidebar-border bg-accent hover:bg-[#b39ddb] focus:outline-none"
+              aria-label="Open settings"
+              title="Settings"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+            <ModeToggle />
+          </div>
         </div>
       </div>
+      <SettingsDrawer isOpen={showSettings} onClose={() => setShowSettings(false)} />
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-[#f3e8ff] dark:bg-accent">
         {messages.map((msg: any, i: number) => {
