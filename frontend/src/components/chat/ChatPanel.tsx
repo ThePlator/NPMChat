@@ -128,7 +128,7 @@ export default function ChatPanel({
   }
 
   return (
-    <main className="flex flex-col flex-1 h-full bg-white">
+    <main className="flex flex-col flex-1 h-full bg-background text-foreground">
       {/* User Details Modal */}
       {showUserDetails && selectedUser && (
         <div
@@ -136,11 +136,11 @@ export default function ChatPanel({
           onClick={() => setShowUserDetails(false)}
         >
           <div
-            className="bg-white rounded-2xl border-2 border-sidebar-border  shadow-lg p-0 flex flex-col items-center gap-0 relative min-w-[340px] max-w-xs"
+            className="bg-card text-foreground rounded-2xl border-2 border-sidebar-border shadow-lg p-0 flex flex-col items-center gap-0 relative min-w-[340px] max-w-xs"
             onClick={(e) => e.stopPropagation()}
           >
             <button
-              className="absolute top-2 right-2 text-2xl font-bold text-black hover:text-[#39ff14]"
+              className="absolute top-2 right-2 text-2xl font-bold text-foreground hover:text-[#39ff14]"
               onClick={() => setShowUserDetails(false)}
               aria-label="Close"
             >
@@ -160,7 +160,7 @@ export default function ChatPanel({
                   </span>
                 </div>
               )}
-              <span className="text-2xl font-extrabold text-black mb-1">
+              <span className="text-2xl font-extrabold text-foreground mb-1">
                 {selectedUser.name}
               </span>
               <div className="flex items-center gap-2 mb-2">
@@ -181,7 +181,7 @@ export default function ChatPanel({
               </div>
               <div className="w-full border-t border-gray-200 my-2"></div>
               {selectedUser.bio && (
-                <div className="w-full bg-[#f3e8ff] border border-[#b39ddb] rounded-lg px-4 py-2 text-center text-gray-700 text-base mt-2">
+                <div className="w-full bg-card/90 dark:bg-input/70 border border-sidebar-border rounded-lg px-4 py-2 text-center text-foreground text-base mt-2">
                   {selectedUser.bio}
                 </div>
               )}
@@ -202,7 +202,7 @@ export default function ChatPanel({
               className="max-w-[90vw] max-h-[80vh] rounded-lg border-4 border-white shadow-lg"
             />
             <button
-              className="absolute top-2 right-2 bg-white border border-sidebar-border  rounded-full w-8 h-8 flex items-center justify-center text-xl font-bold"
+              className="absolute top-2 right-2 bg-card text-foreground border border-sidebar-border rounded-full w-8 h-8 flex items-center justify-center text-xl font-bold"
               onClick={(e) => {
                 e.stopPropagation()
                 setEnlargedImage(null)
@@ -214,7 +214,7 @@ export default function ChatPanel({
             <a
               href={enlargedImage}
               download="image.jpg"
-              className="absolute bottom-2 right-2 bg-white border border-sidebar-border  rounded-full w-8 h-8 flex items-center justify-center text-xl font-bold"
+              className="absolute bottom-2 right-2 bg-card text-foreground border border-sidebar-border rounded-full w-8 h-8 flex items-center justify-center text-xl font-bold"
               onClick={(e) => e.stopPropagation()}
               aria-label="Download image"
             >
@@ -483,7 +483,7 @@ export default function ChatPanel({
               />
               <button
                 type="button"
-                className="absolute top-0 right-0 bg-white border border-sidebar-border  rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                className="absolute top-0 right-0 bg-card text-foreground border border-sidebar-border rounded-full w-5 h-5 flex items-center justify-center text-xs"
                 onClick={() => setImage(null)}
                 aria-label="Remove image"
               >
@@ -497,7 +497,7 @@ export default function ChatPanel({
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleTyping}
             placeholder="Type a message..."
-            className="flex-1 px-3 py-2 border-2 border-sidebar-border  rounded-full font-medium text-base bg-[#f3e8ff] dark:bg-accent text-primary focus:bg-white focus:outline-none focus:border-[#39ff14] placeholder:text-gray-400"
+            className="flex-1 px-3 py-2 border-2 border-sidebar-border rounded-full font-medium text-base bg-card dark:bg-input/80 text-foreground focus:bg-input/95 focus:outline-none focus:border-[#39ff14] placeholder:text-gray-400"
           />
           <button
             type="submit"
@@ -513,10 +513,8 @@ export default function ChatPanel({
       {error && <div className="p-4 text-center text-red-500">{error}</div>}
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white p-6 rounded-xl border shadow-lg">
-            <p className="mb-4 font-semibold">
-              Delete this message?
-            </p>
+          <div className="bg-card text-foreground p-6 rounded-xl border shadow-lg">
+            <p className="mb-4 font-semibold">Delete this message?</p>
 
             <div className="flex gap-4 justify-end">
               <button
