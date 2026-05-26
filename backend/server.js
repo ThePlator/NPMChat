@@ -115,25 +115,22 @@ io.use((socket, next) => {
 })
 
 io.use(async (socket, next) => {
-  const token = socket.handshake.auth.token
-  if (token) {
-    try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET)
-      socket.userId = decoded.id
-      return next()
-    } catch (err) {
-      console.error("Socket auth token invalid:", err.message)
-    }
+  const token = socket.handshake.auth?.token
+  if (!token) {
+    return next(new Error("Authentication error: No token provided"))
   }
 
-  // Fallback to query.userId for compatibility
-  const userId = socket.handshake.query.userId
-  if (userId) {
-    socket.userId = userId
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET)
+    socket.userId = decoded.id
     return next()
+  } catch (err) {
+    if (err.name === "TokenExpiredError") {
+      return next(new Error("Authentication error: Token expired"))
+    }
+    console.error("Socket auth token invalid:", err.message)
+    return next(new Error("Authentication error: Invalid token"))
   }
-
-  next(new Error("Authentication error: No token or userId provided"))
 })
 
 io.on("connection", async (socket) => {

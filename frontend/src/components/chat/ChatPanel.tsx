@@ -9,6 +9,7 @@ import { TypingIndicator } from "./TypingIndicator"
 import EmojiPicker from "emoji-picker-react"
 import { ModeToggle } from "../ui/mode-toggle"
 import { Check, CheckCheck } from "lucide-react"
+import { SettingsDrawer } from "../ui/settings-drawer"
 
 function MessageTick({
   seen,
@@ -44,7 +45,10 @@ export default function ChatPanel({
     loadingMessages,
     error,
     selectedUser: contextSelectedUser,
+    editMessage,
+    deleteMessage,
   } = useMessageContext()
+
   const { user } = useAuth()
   const [input, setInput] = useState("")
   const messageEndRef = useRef<HTMLDivElement | null>(null)
@@ -54,6 +58,10 @@ export default function ChatPanel({
   const [image, setImage] = useState<string | null>(null)
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null)
   const [showUserDetails, setShowUserDetails] = useState(false)
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
+  const [editedText, setEditedText] = useState("")
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null)
+  const [showSettings, setShowSettings] = useState(false)
 
   const { typingUsers, handleTyping } = useTypingIndicator(
     selectedUser?._id || "",
@@ -79,6 +87,28 @@ export default function ChatPanel({
     await sendMessage(selectedUser._id, input, image || undefined)
     setInput("")
     setImage(null)
+  }
+
+  async function handleEdit(
+    messageId: string,
+  ) {
+    if (!editedText.trim()) return
+
+    await editMessage(
+      messageId,
+      editedText,
+    )
+
+    setEditingMessageId(null)
+    setEditedText("")
+  }
+
+  async function handleDelete(
+    messageId: string,
+  ) {
+    await deleteMessage(messageId)
+
+    setShowDeleteConfirm(null)
   }
 
   function addEmoji(emoji: any) {
@@ -135,18 +165,16 @@ export default function ChatPanel({
               </span>
               <div className="flex items-center gap-2 mb-2">
                 <span
-                  className={`w-3 h-3 rounded-full border-2 border-sidebar-border  ${
-                    selectedUser.status === "online"
-                      ? "bg-[#39ff14]"
-                      : "bg-gray-400"
-                  }`}
+                  className={`w-3 h-3 rounded-full border-2 border-sidebar-border  ${selectedUser.status === "online"
+                    ? "bg-[#39ff14]"
+                    : "bg-gray-400"
+                    }`}
                 ></span>
                 <span
-                  className={`text-sm font-bold ${
-                    selectedUser.status === "online"
-                      ? "text-[#39ff14]"
-                      : "text-gray-400"
-                  }`}
+                  className={`text-sm font-bold ${selectedUser.status === "online"
+                    ? "text-[#39ff14]"
+                    : "text-gray-400"
+                    }`}
                 >
                   {selectedUser.status === "online" ? "Online" : "Offline"}
                 </span>
@@ -239,27 +267,37 @@ export default function ChatPanel({
         <div className="flex justify-between w-full px-2">
           <div className="flex flex-col">
             <span
-              className="text-lg font-extrabold text-primary cursor-pointer hover:text-[#39ff14]"
+              className="text-lg font-extrabold text-primary cursor-pointer hover:text-[var(--color-neon-green)]"
               onClick={() => setShowUserDetails(true)}
               title="View profile"
             >
               {selectedUser && selectedUser.name ? selectedUser.name : "User"}
             </span>
             <span
-              className={`text-sm font-bold ${
-                selectedUser && selectedUser.status === "online"
-                  ? "text-[#39ff14]"
-                  : "text-gray-400"
-              }`}
+              className={`text-sm font-bold ${selectedUser && selectedUser.status === "online"
+                ? "text-[var(--color-neon-green)]"
+                : "text-gray-400"
+                }`}
             >
               {selectedUser && selectedUser.status === "online"
                 ? "online"
                 : "offline"}
             </span>
           </div>
-          <ModeToggle />
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowSettings(true)}
+              className="p-2 rounded-full border-2 border-sidebar-border bg-accent hover:bg-[#b39ddb] focus:outline-none"
+              aria-label="Open settings"
+              title="Settings"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+            <ModeToggle />
+          </div>
         </div>
       </div>
+      <SettingsDrawer isOpen={showSettings} onClose={() => setShowSettings(false)} />
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-[#f3e8ff] dark:bg-accent">
         {messages.map((msg: any, i: number) => {
@@ -277,19 +315,42 @@ export default function ChatPanel({
           return (
             <div
               key={msg._id || i}
-              className={`flex w-full ${
-                isMe ? "justify-end" : "justify-start"
-              }`}
+              className={`flex w-full ${isMe ? "justify-end" : "justify-start"
+                }`}
             >
               <div
-                className={`relative max-w-xs md:max-w-md px-0 py-0 rounded-2xl border-2 font-medium text-base flex flex-col gap-1 shadow-sm
-                ${
-                  isMe
+                className={`group relative max-w-xs md:max-w-md px-0 py-0 rounded-2xl border-2 font-medium text-base flex flex-col gap-1 shadow-sm
+                ${isMe
                     ? "bg-[#39ff14] text-black border-[#b39ddb] rounded-br-none items-end"
                     : "bg-white text-black border-[#39ff14] rounded-bl-none items-start"
-                }`}
+                  }`}
               >
-                {msg.image && (
+                {isMe && !msg.deleted && (
+                  <div className="absolute -top-8 right-0 hidden group-hover:flex gap-2 bg-white border rounded-lg px-2 py-1 shadow z-10">
+
+                    {msg.text && (
+                      <button
+                        onClick={() => {
+                          setEditingMessageId(msg._id)
+                          setEditedText(msg.text)
+                        }}
+                        className="text-sm hover:text-blue-500"
+                      >
+                        Edit
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() =>
+                        setShowDeleteConfirm(msg._id)
+                      }
+                      className="text-sm hover:text-red-500"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                )}
+                {msg.image && !msg.deleted && (
                   <div className="relative group rounded-xl overflow-hidden m-2">
                     <img
                       src={msg.image}
@@ -311,9 +372,48 @@ export default function ChatPanel({
                     </a>
                   </div>
                 )}
-                {msg.text && (
-                  <span className="px-4 pb-1 pt-1 break-words text-base text-black">
-                    {msg.text}
+                {editingMessageId === msg._id ? (
+                  <div className="flex gap-2 px-3 py-2">
+                    <input
+                      value={editedText}
+                      onChange={(e) =>
+                        setEditedText(e.target.value)
+                      }
+                      className="border px-2 py-1 rounded flex-1"
+                    />
+
+                    <button
+                      onClick={() => handleEdit(msg._id)}
+                      className="text-sm font-bold text-blue-500"
+                    >
+                      Save
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setEditingMessageId(null)
+                        setEditedText("")
+                      }}
+                      className="text-sm font-bold text-gray-500"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <span
+                    className={`px-4 pb-1 pt-1 break-words text-base ${msg.deleted
+                      ? "italic text-gray-500"
+                      : "text-black"
+                      }`}
+                  >
+                    {msg.deleted
+                      ? "This message was deleted"
+                      : msg.text}
+                    {msg.isEdited && !msg.deleted && (
+                      <span className="ml-2 text-xs italic text-gray-500">
+                        (edited)
+                      </span>
+                    )}
                   </span>
                 )}
                 <span className="flex items-center gap-1 text-xs text-gray-500 mt-1 self-end pr-3 pb-1">
@@ -411,6 +511,35 @@ export default function ChatPanel({
         <div className="p-4 text-center">Loading messages...</div>
       )}
       {error && <div className="p-4 text-center text-red-500">{error}</div>}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white p-6 rounded-xl border shadow-lg">
+            <p className="mb-4 font-semibold">
+              Delete this message?
+            </p>
+
+            <div className="flex gap-4 justify-end">
+              <button
+                onClick={() =>
+                  setShowDeleteConfirm(null)
+                }
+                className="px-4 py-2 border rounded"
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={() =>
+                  handleDelete(showDeleteConfirm)
+                }
+                className="px-4 py-2 bg-red-500 text-white rounded"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   )
 }

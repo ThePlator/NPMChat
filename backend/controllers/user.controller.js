@@ -66,6 +66,7 @@ export const signup = async (req, res) => {
         .json({ message: "Email, password, and name are required." })
     }
 
+    // 1. Verify CAPTCHA (unless running tests)
     if (process.env.NODE_ENV !== "test") {
       if (!captchaToken) {
         return res.status(400).json({
@@ -88,6 +89,7 @@ export const signup = async (req, res) => {
       }
     }
 
+    // 2. Verify Email OTP Verification Token
     if (!emailVerificationToken) {
       return res.status(400).json({
         message: "Email verification token is required.",
@@ -96,14 +98,12 @@ export const signup = async (req, res) => {
 
     try {
       const decoded = jwt.verify(emailVerificationToken, process.env.JWT_SECRET)
-
       if (decoded.type !== "email-verification") {
         return res.status(400).json({
           message: "Invalid email verification session.",
         })
       }
-
-      if (decoded.email !== email) {
+      if (decoded.email.toLowerCase() !== email.toLowerCase()) {
         return res.status(400).json({
           message: "Email verification session does not match this signup email.",
         })
@@ -324,10 +324,10 @@ export const forgotPassword = async (req, res) => {
 
     const user = await User.findOne({ email })
 
+    // Always return a generic success response to avoid user enumeration.
     if (!user) {
       return res.status(200).json({
-        message:
-          "If an account exists for that email, a password reset link has been sent.",
+        message: "If an account exists for that email, a password reset link has been sent.",
       })
     }
 
@@ -341,7 +341,6 @@ export const forgotPassword = async (req, res) => {
 
     const baseUrl = process.env.CLIENT_URL || "http://localhost:3000"
     const resetUrl = `${baseUrl.replace(/\/$/, "")}/reset-password?token=${encodeURIComponent(rawToken)}`
-
     await sendPasswordResetEmail({ to: user.email, resetUrl })
 
     return res.status(200).json({
@@ -387,13 +386,13 @@ export const resetPassword = async (req, res) => {
   }
 }
 
+// Controller to update user profile
 export const updateProfile = async (req, res) => {
   const { name, avatarUrl, bio } = req.body
-  const userId = req.user._id
+  const userId = req.user._id // Assuming user ID is available in req.user
+  let updatedData
 
   try {
-    let updatedData
-
     if (!avatarUrl) {
       updatedData = await User.findByIdAndUpdate(
         userId,
@@ -410,7 +409,7 @@ export const updateProfile = async (req, res) => {
       )
     }
 
-    return res.status(200).json({
+    res.status(200).json({
       message: "Profile updated successfully.",
       user: {
         id: updatedData._id,
@@ -422,7 +421,7 @@ export const updateProfile = async (req, res) => {
     })
   } catch (error) {
     console.error("Error updating profile:", error)
-    return res.status(500).json({ message: "Internal server error." })
+    res.status(500).json({ message: "Internal server error." })
   }
 }
 
@@ -434,38 +433,26 @@ export const sendOTP = async (req, res) => {
       return res.status(400).json({ message: "Email is required." })
     }
 
-    const existingOtp = await OTP.findOne({ email })
-
-    if (
-      !existingOtp &&
-      process.env.NODE_ENV !== "test" &&
-      process.env.RECAPTCHA_SECRET_KEY
-    ) {
-      if (!captchaToken) {
-        return res.status(400).json({ message: "CAPTCHA token is required." })
-      }
-
-      const isHuman = await verifyRecaptcha(captchaToken)
-      if (!isHuman) {
-        return res.status(400).json({ message: "CAPTCHA verification failed." })
-      }
-    }
-
+    // Check if user already exists
     const existingUser = await User.findOne({ email })
     if (existingUser) {
       return res.status(400).json({ message: "User already exists." })
     }
 
+    // Generate a 6-digit numeric OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString()
 
+    // Delete any existing OTPs for this email to avoid duplicates
     await OTP.deleteMany({ email })
 
+    // Save to temporary OTP collection
     const newOTP = new OTP({ email, otp })
     await newOTP.save()
 
+    // Dispatch the email
     const emailResult = await sendOTPEmail(email, otp)
 
-    return res.status(200).json({
+    res.status(200).json({
       message: emailResult.devMode
         ? "OTP generated (logged to console in development mode)."
         : "OTP sent successfully to your email.",
@@ -473,7 +460,7 @@ export const sendOTP = async (req, res) => {
     })
   } catch (error) {
     console.error("Error sending OTP:", error)
-    return res.status(500).json({ message: "Internal server error." })
+    res.status(500).json({ message: "Internal server error." })
   }
 }
 
