@@ -10,34 +10,45 @@ import { io, Socket } from "socket.io-client"
 import { User } from "./AuthContext" // CHANGED: imported User interface
 import { toast } from "sonner" // ADDED: sonner for notifications
 
-export interface Message { // CHANGED: Added Message interface
-  _id: string;
-  text?: string;
-  senderId: string;
-  receiverId: string;
-  timestamp: string;
-  seen: boolean;
-  delivered?: boolean;
-  image?: string;
+export interface Message {
+  // CHANGED: Added Message interface
+  _id: string
+  text?: string
+  senderId: string
+  receiverId: string
+  timestamp: string
+  seen: boolean
+  delivered?: boolean
+  image?: string
 }
 
-export interface MessageContextType { // CHANGED: Added MessageContextType
-  users: User[];
-  unseenMessages: Record<string, number>;
-  messages: Message[];
-  selectedUser: User | null;
-  setSelectedUser: (user: User | null) => void;
-  fetchUsers: () => void;
-  fetchMessages: (userId: string) => void;
-  markAsSeen: (messageId: string) => Promise<any>;
-  sendMessage: (receiverId: string, text: string, image?: string) => Promise<void>;
-  loadingUsers: boolean;
-  loadingMessages: boolean;
-  error: string | null;
-  setError: (error: string | null) => void;
-  socket: Socket | null;
-  socketConnected: boolean;
-  socketError: string | null;
+export interface MessageContextType {
+  // CHANGED: Added MessageContextType
+  users: User[]
+  unseenMessages: Record<string, number>
+  messages: Message[]
+  selectedUser: User | null
+  setSelectedUser: (user: User | null) => void
+  fetchUsers: () => void
+  fetchMessages: (userId: string) => void
+  fetchMediaMessages: (
+    userId: string,
+    page?: number,
+    limit?: number,
+  ) => Promise<any>
+  markAsSeen: (messageId: string) => Promise<any>
+  sendMessage: (
+    receiverId: string,
+    text: string,
+    image?: string,
+  ) => Promise<void>
+  loadingUsers: boolean
+  loadingMessages: boolean
+  error: string | null
+  setError: (error: string | null) => void
+  socket: Socket | null
+  socketConnected: boolean
+  socketError: string | null
 }
 
 const MessageContext = createContext<MessageContextType | null>(null) // CHANGED: Use MessageContextType instead of any
@@ -90,7 +101,7 @@ export const MessageProvider = ({
         {
           id: "socket-config-error",
           duration: Infinity,
-        }
+        },
       )
 
       return
@@ -119,8 +130,9 @@ export const MessageProvider = ({
 
     socket.on("connect_error", (err) => {
       const detail = err.message || String(err)
-      const description =
-        (err as any).description ? ` (${(err as any).description})` : ""
+      const description = (err as any).description
+        ? ` (${(err as any).description})`
+        : ""
 
       console.error("WebSocket connection error:", detail + description, err)
 
@@ -132,7 +144,7 @@ export const MessageProvider = ({
         {
           id: "socket-error",
           duration: 5000,
-        }
+        },
       )
     })
 
@@ -149,7 +161,8 @@ export const MessageProvider = ({
 
   // helper to update the online statuses
   const applyOnlineStatus = useCallback(
-    (usersList: User[], onlineIds: string[]) => { // CHANGED: Use User[] instead of any[]
+    (usersList: User[], onlineIds: string[]) => {
+      // CHANGED: Use User[] instead of any[]
       return usersList.map((user) => {
         const userId = (user._id || user.id)?.toString()
         const isOnline = onlineIds.some(
@@ -196,7 +209,8 @@ export const MessageProvider = ({
           setMessages(msgs)
           // Mark unseen messages as seen (for current user)
           let anySeen = false
-          msgs.forEach((msg: Message) => { // CHANGED: Use Message instead of any
+          msgs.forEach((msg: Message) => {
+            // CHANGED: Use Message instead of any
             if (!msg.seen && msg.receiverId === currentUser?.id) {
               markAsSeen(msg._id)
               anySeen = true
@@ -213,6 +227,23 @@ export const MessageProvider = ({
         .finally(() => setLoadingMessages(false))
     },
     [currentUser],
+  )
+
+  // Fetch media messages for selected user
+  const fetchMediaMessages = useCallback(
+    async (userId: string, page = 1, limit = 20) => {
+      if (!userId) return
+      try {
+        const data = await api.get(
+          `/media/${userId}?page=${page}&limit=${limit}`,
+        )
+        return data
+      } catch (err: any) {
+        setError(err.message || "Failed to load media messages")
+        throw err
+      }
+    },
+    [],
   )
 
   // Mark messages as seen (API: PUT /mark-as-seen/:messageId)
@@ -232,7 +263,10 @@ export const MessageProvider = ({
   useEffect(() => {
     if (!socket) return
 
-    const handleMessageSeen = (data: { userId: string; messageId?: string }) => {
+    const handleMessageSeen = (data: {
+      userId: string
+      messageId?: string
+    }) => {
       setUnseenMessages((prev) => ({ ...prev, [data.userId]: 0 }))
       if (data.messageId) {
         setMessages((prev) =>
@@ -317,7 +351,8 @@ export const MessageProvider = ({
   // Listen for incoming messages
   useEffect(() => {
     if (!socket) return
-    const handleMessage = (msg: Message) => { // CHANGED: Use Message instead of any
+    const handleMessage = (msg: Message) => {
+      // CHANGED: Use Message instead of any
       // Check if message is for current chat
       if (
         selectedUser &&
@@ -343,7 +378,8 @@ export const MessageProvider = ({
     if (!socket) return
     const handleGetOnlineUsers = (onlineUserIds: string[]) => {
       setOnlineUsers(onlineUserIds)
-      setUsers((prevUsers: User[]) => { // CHANGED: Use User[] instead of any[]
+      setUsers((prevUsers: User[]) => {
+        // CHANGED: Use User[] instead of any[]
         if (prevUsers.length === 0) {
           console.log("No users loaded yet")
           return prevUsers
@@ -384,6 +420,7 @@ export const MessageProvider = ({
         setSelectedUser,
         fetchUsers,
         fetchMessages,
+        fetchMediaMessages,
         markAsSeen,
         sendMessage,
         loadingUsers,

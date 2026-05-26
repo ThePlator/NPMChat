@@ -8,7 +8,9 @@ export const getUserForSidebar = async (req, res) => {
     const userId = req.user._id // Get the user ID from the request object
 
     const [filteredUser, unseenMessageCounts] = await Promise.all([
-      User.find({ _id: { $ne: userId } }).select("-password").lean(),
+      User.find({ _id: { $ne: userId } })
+        .select("-password")
+        .lean(),
       Message.aggregate([
         {
           $match: {
@@ -97,7 +99,10 @@ export const markMessagesAsSeen = async (req, res) => {
 
     if (!message) {
       // If already seen or not found, still return 200 if it belongs to this receiver
-      const existingMessage = await Message.findOne({ _id: messageId, receiverId })
+      const existingMessage = await Message.findOne({
+        _id: messageId,
+        receiverId,
+      })
       if (existingMessage) {
         return res.status(200).json(existingMessage)
       }
@@ -167,6 +172,45 @@ export const sendMessage = async (req, res) => {
     })
   } catch (error) {
     console.error("Error sending message:", error)
+    res.status(500).json({ message: "Internal server error." })
+  }
+}
+
+export const getMediaMessages = async (req, res) => {
+  try {
+    const { userId } = req.params
+    const currentUserId = req.user._id
+    const limit = parseInt(req.query.limit) || 20
+    const page = parseInt(req.query.page) || 1
+    const skip = (page - 1) * limit
+
+    const messages = await Message.find({
+      $or: [
+        { senderId: currentUserId, receiverId: userId },
+        { senderId: userId, receiverId: currentUserId },
+      ],
+      image: { $ne: "", $exists: true },
+    })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+
+    const totalMedia = await Message.countDocuments({
+      $or: [
+        { senderId: currentUserId, receiverId: userId },
+        { senderId: userId, receiverId: currentUserId },
+      ],
+      image: { $ne: "", $exists: true },
+    })
+
+    res.status(200).json({
+      messages,
+      totalMedia,
+      currentPage: page,
+      totalPages: Math.ceil(totalMedia / limit),
+    })
+  } catch (error) {
+    console.error("Error fetching media messages:", error)
     res.status(500).json({ message: "Internal server error." })
   }
 }

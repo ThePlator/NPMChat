@@ -6,7 +6,8 @@ import { getInitials } from "../../lib/utils"
 
 import EmojiPicker from "emoji-picker-react"
 import { ModeToggle } from "../ui/mode-toggle"
-import { Check, CheckCheck } from "lucide-react"
+import { Check, CheckCheck, Image as ImageIcon } from "lucide-react"
+import MediaGallery from "./MediaGallery"
 
 function MessageTick({
   seen,
@@ -51,6 +52,7 @@ export default function ChatPanel({
   const [image, setImage] = useState<string | null>(null)
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null)
   const [showUserDetails, setShowUserDetails] = useState(false)
+  const [showMediaGallery, setShowMediaGallery] = useState(false)
 
   useEffect(() => {
     messageEndRef.current?.scrollIntoView({ behavior: "auto" })
@@ -249,7 +251,16 @@ export default function ChatPanel({
                 : "offline"}
             </span>
           </div>
-          <ModeToggle />
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowMediaGallery(true)}
+              className="p-2 rounded-full border-2 border-sidebar-border hover:bg-[#b39ddb] transition-colors"
+              title="View media gallery"
+            >
+              <ImageIcon size={20} className="text-primary" />
+            </button>
+            <ModeToggle />
+          </div>
         </div>
       </div>
       {/* Messages */}
@@ -398,6 +409,11 @@ export default function ChatPanel({
         <div className="p-4 text-center">Loading messages...</div>
       )}
       {error && <div className="p-4 text-center text-red-500">{error}</div>}
+      <MediaGallery
+        open={showMediaGallery}
+        onClose={() => setShowMediaGallery(false)}
+        userId={selectedUser?._id || selectedUser?.id}
+      />
     </main>
   )
 }
