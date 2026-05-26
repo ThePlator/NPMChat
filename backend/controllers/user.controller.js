@@ -103,7 +103,7 @@ export const signup = async (req, res) => {
           message: "Invalid email verification session.",
         })
       }
-      if (decoded.email !== email) {
+      if (decoded.email.toLowerCase() !== email.toLowerCase()) {
         return res.status(400).json({
           message: "Email verification session does not match this signup email.",
         })
