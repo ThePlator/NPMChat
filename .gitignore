@@ -11,6 +11,7 @@
 !.yarn/versions
 
 # testing
+/backend/coverage
 /coverage
 /playwright-report
 /test-results

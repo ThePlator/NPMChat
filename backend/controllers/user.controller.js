@@ -1,10 +1,10 @@
 import User from "../models/User.js"
-import { generateToken } from "../lib/utils.js"
+import { generateToken, verifyRecaptcha } from "../lib/utils.js"
 import bcrypt from "bcryptjs"
 import cloudinary from "../lib/cloudinary.js"
 
 export const signup = async (req, res) => {
-  const { email, password, name, avatarUrl, bio } = req.body // CHANGED: Standardize on avatarUrl instead of profilPic
+  const { email, password, name, avatarUrl, bio, captchaToken } = req.body // CHANGED: Standardize on avatarUrl instead of profilPic
 
   try {
     // Validate input
@@ -12,6 +12,15 @@ export const signup = async (req, res) => {
       return res
         .status(400)
         .json({ message: "Email, password, and name are required." })
+    }
+
+    if (!captchaToken) {
+      return res.status(400).json({ message: "CAPTCHA token is required." });
+    }
+
+    const isHuman = await verifyRecaptcha(captchaToken);
+    if (!isHuman) {
+      return res.status(403).json({ message: "CAPTCHA verification failed." });
     }
 
     // Check if user already exists
@@ -56,7 +65,7 @@ export const signup = async (req, res) => {
 }
 
 export const login = async (req, res) => {
-  const { email, password } = req.body
+  const { email, password, captchaToken } = req.body
 
   try {
     // Validate input
@@ -64,6 +73,15 @@ export const login = async (req, res) => {
       return res
         .status(400)
         .json({ message: "Email and password are required." })
+    }
+
+    if (!captchaToken) {
+      return res.status(400).json({ message: "CAPTCHA token is required." });
+    }
+
+    const isHuman = await verifyRecaptcha(captchaToken);
+    if (!isHuman) {
+      return res.status(403).json({ message: "CAPTCHA verification failed." });
     }
 
     // Find user by email
@@ -155,5 +173,47 @@ export const updateProfile = async (req, res) => {
   } catch (error) {
     console.error("Error updating profile:", error)
     res.status(500).json({ message: "Internal server error." })
+  }
+}
+
+export const sendOTP = async (req, res) => {
+  const { email, captchaToken } = req.body;
+
+  try {
+    if (!email || !captchaToken) {
+      return res.status(400).json({ message: "Email and CAPTCHA token are required." });
+    }
+
+    const isHuman = await verifyRecaptcha(captchaToken);
+    if (!isHuman) {
+      return res.status(403).json({ message: "CAPTCHA verification failed." });
+    }
+
+    // Logic to send OTP via nodemailer
+    res.status(200).json({ message: "OTP sent successfully." });
+  } catch (error) {
+    console.error("Error during sendOTP:", error);
+    res.status(500).json({ message: "Internal server error." });
+  }
+}
+
+export const forgotPassword = async (req, res) => {
+  const { email, captchaToken } = req.body;
+
+  try {
+    if (!email || !captchaToken) {
+      return res.status(400).json({ message: "Email and CAPTCHA token are required." });
+    }
+
+    const isHuman = await verifyRecaptcha(captchaToken);
+    if (!isHuman) {
+      return res.status(403).json({ message: "CAPTCHA verification failed." });
+    }
+
+    // Logic to handle forgot password
+    res.status(200).json({ message: "Password reset link sent." });
+  } catch (error) {
+    console.error("Error during forgotPassword:", error);
+    res.status(500).json({ message: "Internal server error." });
   }
 }
