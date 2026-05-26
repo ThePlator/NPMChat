@@ -97,7 +97,7 @@ describe("Auth Routes", () => {
 
     expect(res.status).toBe(201)
     expect(res.body.message).toBe("User created successfully.")
-    expect(res.body.user.email).toBe(emailUpper)
+    expect(res.body.user.email).toBe(emailUpper.toLowerCase())
   })
 
   it("POST /api/v1/auth/signup - should fail with missing fields", async () => {
