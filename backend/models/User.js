@@ -11,8 +11,9 @@ const userSchema = new mongoose.Schema(
 
     password: {
       type: String,
-      required: true,
+      required: false,  
       minlength: 6,
+      default: null,
     },
 
     name: {
@@ -54,6 +55,16 @@ const userSchema = new mongoose.Schema(
     passwordResetUsedAt: {
       type: Date,
       default: null,
+    },
+    googleId: {          
+      type: String,
+      default: null,
+      index: true,
+    },
+    githubId: {          
+      type: String,
+      default: null,
+      index: true,
     },
   },
   { timestamps: true },
