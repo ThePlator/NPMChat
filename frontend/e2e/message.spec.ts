@@ -31,7 +31,8 @@ function signHs256(payload: Record<string, unknown>) {
 
 test.describe("Message Flow", () => {
   test("should send a message successfully", async ({ page }) => {
-    const testUserId = "guest-test-id"
+    const testUserId = "507f191e810c19729de860ea"
+    const friendId = "507f191e810c19729de860eb"
     const testToken = signHs256({
       id: testUserId,
       isGuest: true,
@@ -93,7 +94,7 @@ test.describe("Message Flow", () => {
         json: {
           users: [
             {
-              _id: "friend-id",
+              _id: friendId,
               name: "Alice",
               email: "alice@example.com",
               avatarUrl: "",
@@ -116,7 +117,7 @@ test.describe("Message Flow", () => {
         json: {
           users: [
             {
-              _id: "friend-id",
+              _id: friendId,
               name: "Alice",
               email: "alice@example.com",
               avatarUrl: "",
@@ -130,7 +131,7 @@ test.describe("Message Flow", () => {
     })
 
     // 3. Mock the chat history with the selected user (GET only)
-    await page.route("**/api/v1/messages/friend-id", async (route) => {
+    await page.route(`**/api/v1/messages/${friendId}`, async (route) => {
       if (route.request().method() === "GET") {
         await route.fulfill({
           status: 200,
@@ -138,7 +139,7 @@ test.describe("Message Flow", () => {
             {
               _id: "msg1",
               text: "Hi there",
-              senderId: "friend-id",
+              senderId: friendId,
               receiverId: testUserId,
               createdAt: new Date().toISOString(),
             },
@@ -162,7 +163,7 @@ test.describe("Message Flow", () => {
     })
 
     // 5. Mock the send message API (POST only)
-    await page.route("**/api/v1/messages/send/friend-id", async (route) => {
+    await page.route(`**/api/v1/messages/send/${friendId}`, async (route) => {
       if (route.request().method() === "POST") {
         const postData = JSON.parse(route.request().postData() || "{}")
         await route.fulfill({
@@ -173,7 +174,7 @@ test.describe("Message Flow", () => {
               _id: "msg2",
               text: postData.text,
               senderId: testUserId,
-              receiverId: "friend-id",
+              receiverId: friendId,
               createdAt: new Date().toISOString(),
             },
           },
@@ -191,11 +192,8 @@ test.describe("Message Flow", () => {
 
     // Wait for the users to load
     const sidebarResponsePromise = page.waitForResponse((response) => {
-      const url = response.url()
-      if (!url.includes("/api/v1/messages")) return false
-      if (url.includes("/api/v1/messages/")) return false
-      if (url.includes("/api/v1/messages/sync")) return false
-      if (url.includes("friend-id")) return false
+      const pathname = new URL(response.url()).pathname
+      if (pathname !== "/api/v1/messages" && pathname !== "/api/v1/messages/") return false
       return response.request().method() === "GET" && response.status() === 200
     })
     await sidebarResponsePromise
@@ -209,7 +207,7 @@ test.describe("Message Flow", () => {
     const historyResponsePromise = page.waitForResponse((response) => {
       const url = response.url()
       return (
-        url.includes("/api/v1/messages/friend-id") &&
+        url.includes(`/api/v1/messages/${friendId}`) &&
         response.request().method() === "GET" &&
         response.status() === 200
       )
@@ -226,7 +224,7 @@ test.describe("Message Flow", () => {
     // Prepare to wait for the send message response
     const sendResponsePromise = page.waitForResponse(
       (response) =>
-        response.url().includes("api/v1/messages/send/friend-id") &&
+        response.url().includes(`/api/v1/messages/send/${friendId}`) &&
         response.request().method() === "POST" &&
         response.status() === 201,
     )
@@ -242,7 +240,8 @@ test.describe("Message Flow", () => {
   })
 
   test("should sync missed messages on reconnect", async ({ page }) => {
-    const testUserId = "guest-test-id"
+    const testUserId = "507f191e810c19729de860ea"
+    const friendId = "507f191e810c19729de860eb"
     const testToken = signHs256({
       id: testUserId,
       isGuest: true,
@@ -284,8 +283,8 @@ test.describe("Message Flow", () => {
       await route.fulfill({
         status: 200,
         json: {
-          users: [{ _id: "friend-id", name: "Alice", email: "alice@example.com", avatarUrl: "", bio: "", status: "online" }],
-          unseenMessages: { "friend-id": 2 },
+          users: [{ _id: friendId, name: "Alice", email: "alice@example.com", avatarUrl: "", bio: "", status: "online" }],
+          unseenMessages: { [friendId]: 2 },
         },
       })
     })
@@ -297,8 +296,8 @@ test.describe("Message Flow", () => {
       await route.fulfill({
         status: 200,
         json: {
-          users: [{ _id: "friend-id", name: "Alice", email: "alice@example.com", avatarUrl: "", bio: "", status: "online" }],
-          unseenMessages: { "friend-id": 2 },
+          users: [{ _id: friendId, name: "Alice", email: "alice@example.com", avatarUrl: "", bio: "", status: "online" }],
+          unseenMessages: { [friendId]: 2 },
         },
       })
     })
@@ -309,7 +308,7 @@ test.describe("Message Flow", () => {
         await route.fulfill({
           status: 200,
           json: [
-            { _id: "sync-msg-1", text: "Missed message 1", senderId: "friend-id", receiverId: testUserId, createdAt: new Date().toISOString(), seen: false, delivered: true, status: "delivered" },
+            { _id: "sync-msg-1", text: "Missed message 1", senderId: friendId, receiverId: testUserId, createdAt: new Date().toISOString(), seen: false, delivered: true, status: "delivered" },
           ],
         })
       } else {
@@ -318,12 +317,12 @@ test.describe("Message Flow", () => {
     })
 
     // 4. Mock the chat history (prevent unhandled request from auto-select)
-    await page.route("**/api/v1/messages/friend-id", async (route) => {
+    await page.route(`**/api/v1/messages/${friendId}`, async (route) => {
       if (route.request().method() === "GET") {
         await route.fulfill({
           status: 200,
           json: [
-            { _id: "sync-msg-1", text: "Missed message 1", senderId: "friend-id", receiverId: testUserId, createdAt: new Date().toISOString(), seen: false, delivered: true, status: "delivered" },
+            { _id: "sync-msg-1", text: "Missed message 1", senderId: friendId, receiverId: testUserId, createdAt: new Date().toISOString(), seen: false, delivered: true, status: "delivered" },
           ],
         })
       } else {
