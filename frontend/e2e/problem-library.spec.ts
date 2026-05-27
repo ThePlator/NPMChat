@@ -20,7 +20,9 @@ test.describe("Problem Template Library", () => {
     await expect(page.locator("text=Merge Intervals")).toBeVisible()
 
     // Test text search
-    const searchInput = page.locator('input[placeholder="Search problems..."]')
+    const searchInput = page.locator(
+      'input[placeholder="Search by title, tags, or company..."]',
+    )
     await searchInput.fill("Merge")
     await searchInput.press("Enter") // Some basic interaction, though our frontend currently doesn't trigger API on type for MVP, but let's assume filtering happens
 
