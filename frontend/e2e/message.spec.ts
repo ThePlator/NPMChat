@@ -1,14 +1,51 @@
 import { test, expect } from "@playwright/test"
+import crypto from "crypto"
+
+const TEST_JWT_SECRET = "github_actions_secret_123"
+
+function base64UrlEncode(input: string | Buffer) {
+  const buf = typeof input === "string" ? Buffer.from(input) : input
+  return buf
+    .toString("base64")
+    .replace(/=/g, "")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+}
+
+function signHs256(payload: Record<string, unknown>) {
+  const header = { alg: "HS256", typ: "JWT" }
+  const now = Math.floor(Date.now() / 1000)
+  const fullPayload = { ...payload, iat: now, exp: now + 60 * 60 } // 1 hour
+
+  const encodedHeader = base64UrlEncode(JSON.stringify(header))
+  const encodedPayload = base64UrlEncode(JSON.stringify(fullPayload))
+  const data = `${encodedHeader}.${encodedPayload}`
+
+  const signature = crypto
+    .createHmac("sha256", TEST_JWT_SECRET)
+    .update(data)
+    .digest()
+
+  return `${data}.${base64UrlEncode(signature)}`
+}
 
 test.describe("Message Flow", () => {
   test("should send a message successfully", async ({ page }) => {
+    const testUserId = "guest-test-id"
+    const testToken = signHs256({
+      id: testUserId,
+      isGuest: true,
+      name: "Me",
+      roomId: "test-room",
+    })
+
     // 1. Mock the auth refresh so we are logged in
-    await page.route("**/api/v1/auth/refresh", async (route) => {
+    await page.route("**/api/v1/auth/refresh*", async (route) => {
       if (route.request().method() === "POST") {
         await route.fulfill({
           status: 200,
           json: {
-            token: "mock-access-token",
+            token: testToken,
           },
         })
       } else {
@@ -20,17 +57,19 @@ test.describe("Message Flow", () => {
     })
 
     // Mock the auth check so we have user details
-    await page.route("**/api/v1/auth/check-auth", async (route) => {
+    await page.route("**/api/v1/auth/check-auth*", async (route) => {
       if (route.request().method() === "GET") {
         await route.fulfill({
           status: 200,
           json: {
             user: {
-              id: "my-user-id",
+              id: testUserId,
               name: "Me",
               email: "me@example.com",
               avatarUrl: "",
               bio: "",
+              isGuest: true,
+              roomId: "test-room",
             },
           },
         })
@@ -100,7 +139,7 @@ test.describe("Message Flow", () => {
               _id: "msg1",
               text: "Hi there",
               senderId: "friend-id",
-              receiverId: "my-user-id",
+              receiverId: testUserId,
               createdAt: new Date().toISOString(),
             },
           ],
@@ -133,7 +172,7 @@ test.describe("Message Flow", () => {
             data: {
               _id: "msg2",
               text: postData.text,
-              senderId: "my-user-id",
+              senderId: testUserId,
               receiverId: "friend-id",
               createdAt: new Date().toISOString(),
             },
@@ -203,24 +242,32 @@ test.describe("Message Flow", () => {
   })
 
   test("should sync missed messages on reconnect", async ({ page }) => {
+    const testUserId = "guest-test-id"
+    const testToken = signHs256({
+      id: testUserId,
+      isGuest: true,
+      name: "Me",
+      roomId: "test-room",
+    })
+
     // 1. Mock auth
-    await page.route("**/api/v1/auth/refresh", async (route) => {
+    await page.route("**/api/v1/auth/refresh*", async (route) => {
       if (route.request().method() === "POST") {
         await route.fulfill({
           status: 200,
-          json: { token: "mock-access-token" },
+          json: { token: testToken },
         })
       } else {
         await route.fulfill({ status: 405, json: { error: "Method Not Allowed" } })
       }
     })
 
-    await page.route("**/api/v1/auth/check-auth", async (route) => {
+    await page.route("**/api/v1/auth/check-auth*", async (route) => {
       if (route.request().method() === "GET") {
         await route.fulfill({
           status: 200,
           json: {
-            user: { id: "my-user-id", name: "Me", email: "me@example.com", avatarUrl: "", bio: "" },
+            user: { id: testUserId, name: "Me", email: "me@example.com", avatarUrl: "", bio: "", isGuest: true, roomId: "test-room" },
           },
         })
       } else {
@@ -229,18 +276,31 @@ test.describe("Message Flow", () => {
     })
 
     // 2. Mock sidebar users
-    await page.route(/\/api\/v1\/messages\/?$/, async (route) => {
-      if (route.request().method() === "GET") {
-        await route.fulfill({
-          status: 200,
-          json: {
-            users: [{ _id: "friend-id", name: "Alice", email: "alice@example.com", avatarUrl: "", bio: "", status: "online" }],
-            unseenMessages: { "friend-id": 2 },
-          },
-        })
-      } else {
+    await page.route("**/api/v1/messages", async (route) => {
+      if (route.request().method() !== "GET") {
         await route.fulfill({ status: 405, json: { error: "Method Not Allowed" } })
+        return
       }
+      await route.fulfill({
+        status: 200,
+        json: {
+          users: [{ _id: "friend-id", name: "Alice", email: "alice@example.com", avatarUrl: "", bio: "", status: "online" }],
+          unseenMessages: { "friend-id": 2 },
+        },
+      })
+    })
+    await page.route("**/api/v1/messages/", async (route) => {
+      if (route.request().method() !== "GET") {
+        await route.fulfill({ status: 405, json: { error: "Method Not Allowed" } })
+        return
+      }
+      await route.fulfill({
+        status: 200,
+        json: {
+          users: [{ _id: "friend-id", name: "Alice", email: "alice@example.com", avatarUrl: "", bio: "", status: "online" }],
+          unseenMessages: { "friend-id": 2 },
+        },
+      })
     })
 
     // 3. Mock sync endpoint returning missed messages
@@ -249,7 +309,7 @@ test.describe("Message Flow", () => {
         await route.fulfill({
           status: 200,
           json: [
-            { _id: "sync-msg-1", text: "Missed message 1", senderId: "friend-id", receiverId: "my-user-id", createdAt: new Date().toISOString(), seen: false, delivered: true, status: "delivered" },
+            { _id: "sync-msg-1", text: "Missed message 1", senderId: "friend-id", receiverId: testUserId, createdAt: new Date().toISOString(), seen: false, delivered: true, status: "delivered" },
           ],
         })
       } else {
@@ -263,7 +323,7 @@ test.describe("Message Flow", () => {
         await route.fulfill({
           status: 200,
           json: [
-            { _id: "sync-msg-1", text: "Missed message 1", senderId: "friend-id", receiverId: "my-user-id", createdAt: new Date().toISOString(), seen: false, delivered: true, status: "delivered" },
+            { _id: "sync-msg-1", text: "Missed message 1", senderId: "friend-id", receiverId: testUserId, createdAt: new Date().toISOString(), seen: false, delivered: true, status: "delivered" },
           ],
         })
       } else {
