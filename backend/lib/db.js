@@ -25,15 +25,15 @@ export const connectDB = async () => {
       }
     }
 
-    if (process.env.NODE_ENV === "development") {
-      console.log("Spinning up MongoMemoryServer for development...")
+    if (process.env.NODE_ENV !== "production") {
+      console.log("Spinning up MongoMemoryServer for development/testing...")
       const { MongoMemoryServer } = await import("mongodb-memory-server")
       const mongoServer = await MongoMemoryServer.create()
       const uri = mongoServer.getUri()
       await mongoose.connect(uri)
       console.log("In-memory MongoDB started and connected successfully")
     } else {
-      throw new Error("No MongoDB connection URI provided.")
+      throw new Error("No MongoDB connection URI provided in production.")
     }
 
     // Auto-seed problems if empty (useful for memory server or fresh DBs)
