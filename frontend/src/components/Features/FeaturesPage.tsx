@@ -237,7 +237,11 @@ export default function FeaturesPage() {
             </h2>
             <p className="text-base sm:text-lg md:text-xl text-gray-600">See what makes us different</p>
           </div>
-          <ComparisonTable />
+          <div className="overflow-x-auto -mx-4 sm:mx-0">
+            <div className="min-w-[520px] sm:min-w-0 px-4 sm:px-0">
+              <ComparisonTable />
+            </div>
+          </div>
         </div>
       </section>
 

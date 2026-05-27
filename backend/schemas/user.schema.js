@@ -2,8 +2,8 @@ import { z } from "zod"
 
 const captchaTokenSchema =
   process.env.NODE_ENV === "test"
-    ? z.string().nullable().optional()
-    : z.string().min(1, "CAPTCHA is required").nullable().optional()
+    ? z.string().optional()
+    : z.string().min(1, "CAPTCHA is required")
 
 export const signupSchema = z.object({
   name: z
