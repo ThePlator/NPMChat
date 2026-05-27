@@ -16,7 +16,7 @@ CMD ["npx", "nodemon", "server.js"]
 
 # --- PRODUCTION STAGE (Lightweight and hardened) ---
 FROM base AS production
-RUN npm ci --omit=dev
+RUN npm install --omit=dev
 COPY . .
 
 # Don't run as root in production
