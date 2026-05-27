@@ -52,20 +52,20 @@ function ForgotPasswordContent() {
 
       <form
         onSubmit={handleSubmit}
-        className="relative z-10 w-full max-w-sm p-8 border-2 border-black bg-white flex flex-col gap-6 shadow-lg brutal-shadow hover:brutal-shadow-hover"
+        className="relative z-10 w-full max-w-sm p-8 border-2 border-black bg-card text-foreground flex flex-col gap-6 shadow-lg brutal-shadow hover:brutal-shadow-hover"
         style={{ boxShadow: `8px 8px 0 0 ${accentGreen}` }}
       >
-        <h1 className="text-3xl font-extrabold mb-2 text-black" style={{ letterSpacing: -1 }}>
+        <h1 className="text-3xl font-extrabold mb-2 text-foreground" style={{ letterSpacing: -1 }}>
           Forgot your <span style={{ color: accent }}>password</span>?
         </h1>
-        <p className="text-black text-sm">
+        <p className="text-foreground text-sm">
           Enter your account email and we’ll send a reset link.
         </p>
 
-        <label className="flex flex-col gap-1 text-black font-bold text-lg">
+        <label className="flex flex-col gap-1 text-foreground font-bold text-lg">
           Email
           <input
-            className="border-2 border-black px-4 py-2 text-lg bg-[#f3e8ff] focus:bg-[#b39ddb]/60 focus:outline-none transition-all cursor-[url('/custom-cursor-arrow.svg'),_pointer]"
+            className="border-2 border-black px-4 py-2 text-lg bg-card/90 dark:bg-input/70 text-foreground focus:bg-input/90 dark:focus:bg-input/90 focus:outline-none transition-all cursor-[url('/custom-cursor-arrow.svg'),_pointer]"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -83,7 +83,7 @@ function ForgotPasswordContent() {
         <button
           type="submit"
           disabled={loading}
-          className="mt-2 border-2 border-black bg-[#b39ddb] text-black font-extrabold text-lg py-2 rounded-none transition-all cursor-[url('/custom-cursor-click.svg'),_pointer] hover:bg-[#39ff14] hover:text-white focus:outline-none"
+          className="mt-2 border-2 border-black bg-[#b39ddb] text-black dark:text-white font-extrabold text-lg py-2 rounded-none transition-all cursor-[url('/custom-cursor-click.svg'),_pointer] hover:bg-[#39ff14] hover:text-white focus:outline-none"
           style={{ boxShadow: `4px 4px 0 0 ${accent}` }}
         >
           {loading ? "Sending..." : "Send reset link"}
@@ -92,7 +92,7 @@ function ForgotPasswordContent() {
         <div className="text-center">
           <Link
             href="/login"
-            className="underline text-black font-bold cursor-[url('/custom-cursor-click.svg'),_pointer] hover:text-[${accent}]"
+            className="underline text-foreground font-bold cursor-[url('/custom-cursor-click.svg'),_pointer] hover:text-[${accent}]"
           >
             Back to login
           </Link>
