@@ -187,23 +187,13 @@ test.describe("Message Flow", () => {
       }
     })
 
-    // Navigate to chat
-    await page.goto("/chat")
-
-    // Wait for the users to load
+    // Set up response waits before navigation to avoid races (auto-select can fetch immediately).
     const sidebarResponsePromise = page.waitForResponse((response) => {
       const pathname = new URL(response.url()).pathname
       if (pathname !== "/api/v1/messages" && pathname !== "/api/v1/messages/") return false
       return response.request().method() === "GET" && response.status() === 200
     })
-    await sidebarResponsePromise
 
-    // Wait for "Alice" to appear in the sidebar
-    await expect(page.getByText("Alice").first()).toBeVisible({
-      timeout: 10000,
-    })
-
-    // The app auto-selects the first user; wait for the conversation fetch to complete
     const historyResponsePromise = page.waitForResponse((response) => {
       const url = response.url()
       return (
@@ -212,6 +202,17 @@ test.describe("Message Flow", () => {
         response.status() === 200
       )
     })
+
+    // Navigate to chat
+    await page.goto("/chat")
+    await sidebarResponsePromise
+
+    // Wait for "Alice" to appear in the sidebar
+    await expect(page.getByText("Alice").first()).toBeVisible({
+      timeout: 10000,
+    })
+
+    // The app auto-selects the first user; wait for the conversation fetch to complete
     await historyResponsePromise
 
     // Verify chat history loaded
