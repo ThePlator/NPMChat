@@ -3,22 +3,19 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
 if (!process.env.NEXT_PUBLIC_API_URL && process.env.NODE_ENV === "production") {
   console.error(
     "[NPMChat] WARNING: NEXT_PUBLIC_API_URL is not set. " +
-    "All API calls will target http://localhost:8080, which will fail in production. " +
-    "Set NEXT_PUBLIC_API_URL to your backend URL."
+      "All API calls will target http://localhost:8080, which will fail in production. " +
+      "Set NEXT_PUBLIC_API_URL to your backend URL.",
   )
 }
 
 const BASES = {
-  auth:
-    process.env.NEXT_PUBLIC_AUTH_API_BASE ||
-    `${API_URL}/api/v1/auth`,
+  auth: process.env.NEXT_PUBLIC_AUTH_API_BASE || `${API_URL}/api/v1/auth`,
   messages:
-    process.env.NEXT_PUBLIC_MESSAGES_API_BASE ||
-    `${API_URL}/api/v1/messages`,
+    process.env.NEXT_PUBLIC_MESSAGES_API_BASE || `${API_URL}/api/v1/messages`,
+  v1: `${API_URL}/api/v1`,
 }
 
 const DEFAULT_TIMEOUT = 30000
-
 let token: string | null = null
 type RefreshListener = (newToken: string) => void
 const listeners: RefreshListener[] = []
@@ -62,11 +59,11 @@ function fetchWithTimeout(url: string, options: RequestInit, timeout: number): P
   return fetch(url, opts).finally(() => clearTimeout(timeoutId))
 }
 
-async function fetcher(
+export async function fetcher(
   path: string,
   options: RequestInit = {},
-  base: "auth" | "messages" = "messages",
-  isRetry = false
+  base: "auth" | "messages" | "v1" = "messages",
+  isRetry = false,
 ): Promise<any> {
   const headers: any = {
     "Content-Type": "application/json",
@@ -79,7 +76,7 @@ async function fetcher(
   const fetchOptions: RequestInit = {
     ...options,
     headers,
-    credentials: "include"
+    credentials: "include",
   }
 
   if (!isOnline) {
@@ -112,7 +109,7 @@ async function fetcher(
             const refreshRes = await fetch(`${BASES.auth}/refresh`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              credentials: "include"
+              credentials: "include",
             })
 
             if (refreshRes.ok) {
@@ -139,20 +136,20 @@ async function fetcher(
 
     const errorMsg = data?.message || res.statusText || "API Error"
     const error = new Error(errorMsg)
-      ; (error as any).data = data
-      ; (error as any).status = res.status
+    ;(error as any).data = data
+    ;(error as any).status = res.status
     throw error
   }
   return data
 }
 
 export const api = {
-  get: (path: string, base: "auth" | "messages" = "messages") =>
+  get: (path: string, base: "auth" | "messages" | "v1" = "messages") =>
     fetcher(path, { method: "GET" }, base),
-  post: (path: string, body?: any, base: "auth" | "messages" = "messages") =>
+  post: (path: string, body?: any, base: "auth" | "messages" | "v1" = "messages") =>
     fetcher(path, { method: "POST", body: JSON.stringify(body) }, base),
-  put: (path: string, body?: any, base: "auth" | "messages" = "messages") =>
+  put: (path: string, body?: any, base: "auth" | "messages" | "v1" = "messages") =>
     fetcher(path, { method: "PUT", body: JSON.stringify(body) }, base),
-  delete: (path: string, base: "auth" | "messages" = "messages") =>
+  delete: (path: string, base: "auth" | "messages" | "v1" = "messages") =>
     fetcher(path, { method: "DELETE" }, base),
 }

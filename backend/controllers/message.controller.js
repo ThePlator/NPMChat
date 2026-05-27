@@ -7,6 +7,11 @@ export const getUserForSidebar = async (req, res) => {
   try {
     const userId = req.user._id // Get the user ID from the request object
 
+    // Guests do not have a sidebar of DMs
+    if (typeof userId === "string" && userId.startsWith("guest-")) {
+      return res.status(200).json({ users: [], unseenMessages: {} })
+    }
+
     const [filteredUser, unseenMessageCounts] = await Promise.all([
       User.find({ _id: { $ne: userId } })
         .select("-password -refreshTokenHash -refreshTokenId")

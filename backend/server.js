@@ -12,6 +12,7 @@ import { connectDB } from "./lib/db.js"
 import swaggerSpec from "./lib/swagger.js"
 import userRouter from "./routes/user.routes.js"
 import messageRouter from "./routes/message.routes.js"
+import ChallengeRoom from "./models/ChallengeRoom.js"
 import { Server } from "socket.io"
 import { isVercel, parsePort, getPlatform } from "./lib/runtime.js"
 import { registerTypingHandlers } from "./typingHandler.js"
@@ -251,6 +252,35 @@ io.on("connection", async (socket) => {
     })
   })
 
+  socket.on("joinChallengeRoom", (challengeId) => {
+    socket.join(`challenge_${challengeId}`)
+    console.log(`User ${userIdStr} joined challenge room ${challengeId}`)
+  })
+
+  socket.on("leaveChallengeRoom", (challengeId) => {
+    socket.leave(`challenge_${challengeId}`)
+    console.log(`User ${userIdStr} left challenge room ${challengeId}`)
+  })
+
+  socket.on("challengeSubmission", async (data) => {
+    const { challengeId } = data
+    if (challengeId) {
+      try {
+        const challenge = await ChallengeRoom.findById(challengeId).populate(
+          "submissions.userId",
+          "name avatarUrl",
+        )
+        if (challenge) {
+          io.to(`challenge_${challengeId}`).emit("leaderboardUpdate", {
+            submissions: challenge.submissions,
+          })
+        }
+      } catch (err) {
+        console.error("Error fetching challenge leaderboard:", err)
+      }
+    }
+  })
+
   socket.on("roomMessage", (data) => {
     // Ephemeral room message (not saved to DB)
     io.to(data.roomId).emit("newRoomMessage", {
@@ -318,9 +348,14 @@ app.use("/api/health", (req, res) => {
   })
 })
 
+import problemRouter from "./routes/problem.route.js"
+import challengeRouter from "./routes/challenge.routes.js"
+
 // Apply strict limiter to auth routes, and standard limiter to message routes
 app.use("/api/v1/auth", authLimiter, userRouter)
 app.use("/api/v1/messages", standardLimiter, messageRouter)
+app.use("/api/v1/problems", standardLimiter, problemRouter)
+app.use("/api/v1/challenges", standardLimiter, challengeRouter)
 
 app.use("/", (req, res) => {
   res.send("NPMChat API is running")
@@ -336,6 +371,8 @@ if (process.env.NODE_ENV !== "test") {
       console.error("DB Connection Failed", err)
     })
 }
+import initCronJobs from "./lib/cron.js"
+
 if (isVercel()) {
   console.log(
     "Running in Vercel Serverless environment. Skipping server.listen() and exporting Express app.",
@@ -347,6 +384,7 @@ if (isVercel()) {
       `Server is running on port ${port} in ${getPlatform()} environment`,
     )
     console.log(`CORS allowed origins: ${allowedOrigins.join(", ")}`)
+    initCronJobs()
   })
 }
 
