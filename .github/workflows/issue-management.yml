@@ -19,9 +19,9 @@ jobs:
             const repo = context.repo.repo;
             const issue_number = context.payload.issue.number;
             
-            const label = 'GSSoC';
+            const label = 'gssoc:approved';
             const color = 'FD873D'; 
-            const description = 'Under GirlScript Summer of Code';
+            const description = 'Approved for GirlScript Summer of Code';
             
             // Try to update the label if it exists, otherwise create it
             try {
