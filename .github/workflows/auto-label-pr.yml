@@ -2,13 +2,13 @@ name: Label PR from Linked Issues
 
 # Trigger whenever a PR is opened, reopened, or its body is edited.
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, reopened, edited]
 
 # Minimal permissions: read issues to get their labels, write PR labels.
 permissions:
   contents: read
-  issues: read
+  issues: write
   pull-requests: write
 
 jobs:
