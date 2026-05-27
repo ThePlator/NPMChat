@@ -166,7 +166,7 @@ test.describe("Message Flow", () => {
       timeout: 10000,
     })
 
-    // Select "Alice" from sidebar
+    // The app auto-selects the first user; wait for the conversation fetch to complete
     const historyResponsePromise = page.waitForResponse((response) => {
       const url = response.url()
       return (
@@ -175,7 +175,6 @@ test.describe("Message Flow", () => {
         response.status() === 200
       )
     })
-    await page.getByText("Alice").first().click()
     await historyResponsePromise
 
     // Verify chat history loaded
