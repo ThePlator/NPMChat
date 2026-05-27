@@ -122,7 +122,7 @@ io.use((socket, next) => {
 
 io.use(async (socket, next) => {
   const token = socket.handshake.auth?.token
-  if (!token) {
+  if (!token || token === "undefined" || token === "null") {
     return next(new Error("Authentication error: No token provided"))
   }
 
@@ -139,7 +139,11 @@ io.use(async (socket, next) => {
     if (err.name === "TokenExpiredError") {
       return next(new Error("Authentication error: Token expired"))
     }
-    console.error("Socket auth token invalid:", err.message)
+    if (err.name === "JsonWebTokenError") {
+      console.warn(`Socket auth token invalid: ${err.message}`)
+    } else {
+      console.error("Socket auth token invalid:", err.message)
+    }
     return next(new Error("Authentication error: Invalid token"))
   }
 })

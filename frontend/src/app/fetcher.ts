@@ -52,7 +52,7 @@ async function fetcher(
   }
 
   const t = getToken()
-  if (t) headers["Authorization"] = `Bearer ${t}`
+  if (t && t !== "undefined" && t !== "null") headers["Authorization"] = `Bearer ${t}`
 
   // Always include credentials for cookies (refresh token)
   const fetchOptions: RequestInit = {

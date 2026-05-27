@@ -4,7 +4,7 @@ import User from "../models/User.js"
 export const protectRoute = async (req, res, next) => {
   const token = req.headers.authorization?.split(" ")[1]
 
-  if (!token) {
+  if (!token || token === "undefined" || token === "null") {
     return res.status(401).json({ message: "Not authorized, no token" })
   }
 
@@ -35,7 +35,11 @@ export const protectRoute = async (req, res, next) => {
         .status(401)
         .json({ code: "TOKEN_EXPIRED", message: "Access token expired" })
     }
-    console.error("Token verification failed:", error)
+    if (error.name === "JsonWebTokenError") {
+      console.warn(`Token verification failed: ${error.message}`)
+    } else {
+      console.error("Token verification failed:", error)
+    }
     res.status(401).json({ message: "Not authorized, token failed" })
   }
 }

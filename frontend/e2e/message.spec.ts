@@ -126,6 +126,11 @@ test.describe("Message Flow", () => {
         response.status() === 200,
     )
 
+    // Inject token before navigation to mimic proper hydration
+    await page.addInitScript(() => {
+      window.localStorage.setItem('token', 'mock-access-token')
+    })
+    
     // Navigate to chat
     await page.goto("/chat")
 
