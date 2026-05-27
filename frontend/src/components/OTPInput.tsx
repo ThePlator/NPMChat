@@ -72,7 +72,7 @@ export default function OTPInput({ value, onChange }: OTPInputProps) {
             onChange={(e) => handleChange(e.target, index)}
             onKeyDown={(e) => handleKeyDown(e, index)}
             onPaste={handlePaste}
-            className="w-11 h-14 border-2 border-black text-center text-2xl font-extrabold bg-[#f3e8ff] text-black focus:bg-[#b39ddb]/50 focus:outline-none transition-all focus:ring-0 cursor-[url('/custom-cursor-arrow.svg'),_pointer]"
+            className="w-11 h-14 border-2 border-black text-center text-2xl font-extrabold bg-card/90 dark:bg-input/70 text-foreground focus:bg-input/90 focus:outline-none transition-all focus:ring-0 cursor-[url('/custom-cursor-arrow.svg'),_pointer]"
             style={{
               boxShadow: "3px 3px 0 0 rgba(0, 0, 0, 1)"
             }}
