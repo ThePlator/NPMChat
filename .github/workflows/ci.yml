@@ -42,5 +42,10 @@ jobs:
         run: npx playwright install --with-deps
         
       - name: Run Frontend E2E Tests
-        working-directory: ./frontend
-        run: npx playwright test
+        run: |
+          cd backend
+          echo "JWT_SECRET=github_actions_secret_123" > .env
+          npm run start &
+          sleep 5
+          cd ../frontend
+          npx playwright test

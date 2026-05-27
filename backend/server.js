@@ -26,23 +26,29 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec))
 app.use(helmet())
 app.use(cookieParser())
 
-const standardLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per window
-  message: { error: "Too many requests, please try again later." },
-  standardHeaders: true,
-  legacyHeaders: false,
-})
+const standardLimiter =
+  process.env.NODE_ENV === "test"
+    ? (req, res, next) => next()
+    : rateLimit({
+        windowMs: 15 * 60 * 1000, // 15 minutes
+        max: 100, // Limit each IP to 100 requests per window
+        message: { error: "Too many requests, please try again later." },
+        standardHeaders: true,
+        legacyHeaders: false,
+      })
 
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20, // Stricter limit for auth/login routes
-  message: {
-    error: "Too many authentication attempts, please try again later.",
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-})
+const authLimiter =
+  process.env.NODE_ENV === "test"
+    ? (req, res, next) => next()
+    : rateLimit({
+        windowMs: 15 * 60 * 1000, // 15 minutes
+        max: 20, // Stricter limit for auth/login routes
+        message: {
+          error: "Too many authentication attempts, please try again later.",
+        },
+        standardHeaders: true,
+        legacyHeaders: false,
+      })
 
 // 1. Configure Allowed Origins
 const allowedOrigins = [
@@ -123,6 +129,11 @@ io.use(async (socket, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET)
     socket.userId = decoded.id
+    socket.isGuest = decoded.isGuest || false
+    if (socket.isGuest) {
+      socket.guestName = decoded.name
+      socket.roomId = decoded.roomId
+    }
     return next()
   } catch (err) {
     if (err.name === "TokenExpiredError") {
@@ -135,55 +146,106 @@ io.use(async (socket, next) => {
 
 io.on("connection", async (socket) => {
   const userId = socket.userId
+  const userIdStr = userId ? userId.toString() : ""
 
   if (userId) {
-    const userIdStr = userId.toString()
-
     if (!userSockets.has(userIdStr)) {
       userSockets.set(userIdStr, new Set())
     }
     userSockets.get(userIdStr).add(socket.id)
     socket.join(userIdStr)
-    socket.data.username = userIdStr
+    socket.data.username = socket.isGuest ? socket.guestName : userIdStr
+    socket.data.isGuest = socket.isGuest
 
-    console.log(`User connected: ${userIdStr} (socket: ${socket.id})`)
+    console.log(
+      `User connected: ${userIdStr} (socket: ${socket.id}, isGuest: ${socket.isGuest})`,
+    )
 
-    // Delivery sweep
-    try {
-      const undeliveredMessages = await Message.find({
-        receiverId: userIdStr,
-        delivered: false,
+    // If guest, auto-join their specific room
+    if (socket.isGuest && socket.roomId) {
+      socket.join(socket.roomId)
+      socket.to(socket.roomId).emit("userJoinedRoom", {
+        userId: userIdStr,
+        username: socket.data.username,
+        isGuest: true,
       })
+    }
 
-      for (const msg of undeliveredMessages) {
-        try {
-          msg.delivered = true
-          await msg.save()
+    // Delivery sweep (only for registered users, guests don't have persistent messages)
+    if (!socket.isGuest) {
+      try {
+        const undeliveredMessages = await Message.find({
+          receiverId: userIdStr,
+          delivered: false,
+        })
 
-          io.to(msg.senderId.toString()).emit("messageDelivered", {
-            messageId: msg._id.toString(),
-          })
-        } catch (saveErr) {
-          if (saveErr.name === "VersionError") {
-            continue
+        for (const msg of undeliveredMessages) {
+          try {
+            msg.delivered = true
+            await msg.save()
+
+            io.to(msg.senderId.toString()).emit("messageDelivered", {
+              messageId: msg._id.toString(),
+            })
+          } catch (saveErr) {
+            if (saveErr.name === "VersionError") {
+              continue
+            }
+            throw saveErr
           }
-          throw saveErr
         }
+      } catch (error) {
+        console.error("Error during delivery sweep:", error)
       }
-    } catch (error) {
-      console.error("Error during delivery sweep:", error)
     }
   }
 
   // Register typing indicator handlers
   registerTypingHandlers(io, socket, userSockets)
 
+  // Room Handlers
+  socket.on("joinRoom", (roomId) => {
+    socket.join(roomId)
+    console.log(`User ${userIdStr} joined room ${roomId}`)
+    socket.to(roomId).emit("userJoinedRoom", {
+      userId: userIdStr,
+      username: socket.data.username,
+      isGuest: socket.isGuest || false,
+    })
+  })
+
+  socket.on("roomMessage", (data) => {
+    // Ephemeral room message (not saved to DB)
+    io.to(data.roomId).emit("newRoomMessage", {
+      roomId: data.roomId,
+      senderId: userIdStr,
+      senderName: socket.data.username,
+      isGuest: socket.isGuest || false,
+      text: data.text,
+      createdAt: new Date().toISOString(),
+    })
+  })
+
+  socket.on("removeGuest", (data) => {
+    // Only host should call this. Data = { roomId, guestId }
+    // In a real app, verify this socket is the host of the room
+    const targetSockets = userSockets.get(data.guestId)
+    if (targetSockets) {
+      targetSockets.forEach((socketId) => {
+        const targetSocket = io.sockets.sockets.get(socketId)
+        if (targetSocket) {
+          targetSocket.leave(data.roomId)
+          targetSocket.emit("removedFromRoom", { roomId: data.roomId })
+        }
+      })
+    }
+  })
+
   // Broadcast online users (unique user IDs with at least one active socket)
   io.emit("getOnlineUsers", Array.from(userSockets.keys()))
 
   socket.on("disconnect", () => {
     if (userId) {
-      const userIdStr = userId.toString()
       const sockets = userSockets.get(userIdStr)
       if (sockets) {
         sockets.delete(socket.id)

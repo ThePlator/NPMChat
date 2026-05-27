@@ -3,24 +3,27 @@ import React, { createContext, useContext, useState, useEffect } from "react"
 import { api, setToken } from "./fetcher"
 
 export interface User {
-  id?: string;
-  _id?: string;
-  name?: string;
-  email?: string;
-  avatarUrl?: string;
-  status?: "online" | "offline";
-  bio?: string;
+  id?: string
+  _id?: string
+  name?: string
+  email?: string
+  avatarUrl?: string
+  status?: "online" | "offline"
+  bio?: string
+  isGuest?: boolean
+  roomId?: string
 }
 
 export interface AuthContextType {
-  user: User | null;
-  loading: boolean;
-  error: string | null;
-  signup: (data: Record<string, unknown>) => Promise<any>;
-  login: (data: Record<string, unknown>) => Promise<any>;
-  logout: () => void;
-  checkAuth: () => Promise<void>;
-  updateProfile: (data: Record<string, unknown>) => Promise<any>;
+  user: User | null
+  loading: boolean
+  error: string | null
+  signup: (data: Record<string, unknown>) => Promise<any>
+  login: (data: Record<string, unknown>) => Promise<any>
+  logout: () => void
+  checkAuth: () => Promise<void>
+  updateProfile: (data: Record<string, unknown>) => Promise<any>
+  guestLogin: (data: Record<string, unknown>) => Promise<any>
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
@@ -76,6 +79,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  async function guestLogin(data: Record<string, unknown>) {
+    setError(null)
+    setLoading(true)
+    try {
+      const res = await api.post("/guest-login", data, "auth")
+      setToken(res.token)
+      setUser(res.user)
+      setLoading(false)
+      return res
+    } catch (e: any) {
+      setError(e.message || "Guest login failed")
+      setLoading(false)
+      throw e
+    }
+  }
+
   async function checkAuth() {
     setLoading(true)
     try {
@@ -124,6 +143,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         logout,
         checkAuth,
         updateProfile,
+        guestLogin,
       }}
     >
       {children}
