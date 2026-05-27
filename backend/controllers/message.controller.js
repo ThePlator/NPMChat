@@ -142,6 +142,10 @@ export const sendMessage = async (req, res) => {
     const receiverId = req.params.receiverId // Get the receiver's userId from the request parameter
     const senderId = req.user._id // Get the sender's userId from the
 
+    if (!text && !image) {
+      return res.status(400).json({ message: "Message content is required." })
+    }
+
     let imageUrl
     if (image) {
       const uploadedImage = await cloudinary.uploader.upload(image)
