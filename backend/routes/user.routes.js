@@ -21,7 +21,6 @@ import {
   verifyOTPSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
-  updateProfileSchema,
 } from "../schemas/user.schema.js"
 
 const userRouter = express.Router()
@@ -214,11 +213,6 @@ userRouter.get("/check-auth", protectRoute, checkAuth)
  *       500:
  *         description: Internal server error
  */
-userRouter.put(
-  "/update-profile",
-  protectRoute,
-  validateBody(updateProfileSchema),
-  updateProfile,
-)
+userRouter.put("/update-profile", protectRoute, updateProfile)
 
 export default userRouter
