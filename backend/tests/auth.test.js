@@ -79,21 +79,19 @@ describe("Auth Routes", () => {
     // Generate an OTP and verification token with lowercase email
     const emailLower = "casetest@example.com"
     const emailUpper = "CASETEST@example.com"
-    
+
     const emailVerificationToken = jwt.sign(
       { email: emailLower, type: "email-verification" },
       process.env.JWT_SECRET || "test-secret",
     )
 
     // Attempt signup with uppercase email
-    const res = await request(app)
-      .post("/api/v1/auth/signup")
-      .send({
-        email: emailUpper,
-        password: "password123",
-        name: "Case Test User",
-        emailVerificationToken,
-      })
+    const res = await request(app).post("/api/v1/auth/signup").send({
+      email: emailUpper,
+      password: "password123",
+      name: "Case Test User",
+      emailVerificationToken,
+    })
 
     expect(res.status).toBe(201)
     expect(res.body.message).toBe("User created successfully.")
@@ -258,5 +256,45 @@ describe("Auth Routes", () => {
 
     expect(res.status).toBe(401)
     expect(res.body.message).toBe("Not authorized, token failed")
+  })
+
+  it("POST /api/v1/auth/guest-login - should generate a guest token", async () => {
+    const res = await request(app)
+      .post("/api/v1/auth/guest-login")
+      .send({ name: "Test Guest", roomId: "test-room" })
+
+    expect(res.status).toBe(200)
+    expect(res.body.message).toBe("Guest login successful.")
+    expect(res.body.user.isGuest).toBe(true)
+    expect(res.body.user.name).toBe("Test Guest")
+    expect(res.body.user.roomId).toBe("test-room")
+    expect(res.body.token).toBeDefined()
+
+    // Save guest token to test check-auth bypass
+    testToken = res.body.token
+  })
+
+  it("POST /api/v1/auth/guest-login - should fail if missing fields", async () => {
+    const res = await request(app)
+      .post("/api/v1/auth/guest-login")
+      .send({ name: "Test Guest" }) // Missing roomId
+
+    expect(res.status).toBe(400)
+    expect(res.body.message).toBe(
+      "Name and roomId are required for guest login.",
+    )
+  })
+
+  it("GET /api/v1/auth/check-auth - should bypass database and return guest user object", async () => {
+    const res = await request(app)
+      .get("/api/v1/auth/check-auth")
+      .set("Authorization", `Bearer ${testToken}`)
+
+    expect(res.status).toBe(200)
+    expect(res.body.user.isGuest).toBe(true)
+    expect(res.body.user.name).toBe("Test Guest")
+    expect(res.body.user.roomId).toBe("test-room")
+    // Verify it generates a guest- ID
+    expect(res.body.user.id.startsWith("guest-")).toBe(true)
   })
 })

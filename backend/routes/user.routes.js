@@ -10,6 +10,7 @@ import {
   logout,
   sendOTP,
   verifyOTP,
+  loginGuest,
 } from "../controllers/user.controller.js"
 import { protectRoute } from "../middleware/auth.js"
 import { validateBody } from "../middleware/validate.middleware.js"
@@ -137,8 +138,47 @@ userRouter.post("/refresh", refresh)
 userRouter.post("/logout", logout)
 userRouter.post("/send-otp", validateBody(sendOTPSchema), sendOTP)
 userRouter.post("/verify-otp", validateBody(verifyOTPSchema), verifyOTP)
-userRouter.post("/forgot-password", validateBody(forgotPasswordSchema), forgotPassword)
-userRouter.post("/reset-password", validateBody(resetPasswordSchema), resetPassword)
+/**
+ * @swagger
+ * /api/v1/auth/guest-login:
+ *   post:
+ *     summary: Log in an ephemeral guest user
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - roomId
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: Guest User
+ *               roomId:
+ *                 type: string
+ *                 example: 64fcb9e82f1b4c001f8d4a9c
+ *     responses:
+ *       200:
+ *         description: Guest login successful
+ *       400:
+ *         description: Missing required fields
+ *       500:
+ *         description: Internal server error
+ */
+userRouter.post("/guest-login", loginGuest)
+userRouter.post(
+  "/forgot-password",
+  validateBody(forgotPasswordSchema),
+  forgotPassword,
+)
+userRouter.post(
+  "/reset-password",
+  validateBody(resetPasswordSchema),
+  resetPassword,
+)
 userRouter.get("/check-auth", protectRoute, checkAuth)
 
 /**

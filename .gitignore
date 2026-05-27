@@ -54,3 +54,8 @@ next-env.d.ts
 
 *.sh
 CODEBASE_AUDIT.md
+
+#Files
+NPMChat_Feature_Specification.pdf
+spec_text.txt
+ISSUE_TEMPLATE/
