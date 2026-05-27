@@ -179,7 +179,10 @@ export const MessageProvider = ({
 
     setSocket(socket)
 
-    const unsubSession = addSessionRestoreListener(async () => {
+    // Trigger sync on mount — covers the case where session restore listeners
+    // fired before this effect's listener was registered (e.g. in tests where
+    // mocked API calls resolve synchronously).
+    const doSync = async () => {
       setIsSyncing(true)
       try {
         const msgs = await api.get("/sync")
@@ -196,7 +199,10 @@ export const MessageProvider = ({
       } finally {
         setIsSyncing(false)
       }
-    })
+    }
+    doSync()
+
+    const unsubSession = addSessionRestoreListener(doSync)
 
     return () => {
       socket.disconnect()

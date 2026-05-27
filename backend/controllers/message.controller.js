@@ -72,6 +72,12 @@ export const getMessages = async (req, res) => {
 export const syncMessages = async (req, res) => {
   try {
     const userId = req.user._id
+
+    // Guests do not have persisted messages
+    if (req.user.isGuest) {
+      return res.status(200).json([])
+    }
+
     const after = req.query.after ? new Date(req.query.after) : new Date(0)
 
     const messages = await Message.find({

@@ -92,7 +92,16 @@ test.describe("Message Flow", () => {
       }
     })
 
-    // 4. Mock the send message API (POST only)
+    // 4. Mock the sync endpoint (returns no missed messages)
+    await page.route("**/api/v1/messages/sync", async (route) => {
+      if (route.request().method() === "GET") {
+        await route.fulfill({ status: 200, json: [] })
+      } else {
+        await route.fulfill({ status: 405, json: { error: "Method Not Allowed" } })
+      }
+    })
+
+    // 5. Mock the send message API (POST only)
     await page.route("**/api/v1/messages/send/friend-id", async (route) => {
       if (route.request().method() === "POST") {
         const postData = JSON.parse(route.request().postData() || "{}")
@@ -218,10 +227,24 @@ test.describe("Message Flow", () => {
       }
     })
 
-    // 4. Navigate to chat
+    // 4. Mock the chat history (prevent unhandled request from auto-select)
+    await page.route("**/api/v1/messages/friend-id", async (route) => {
+      if (route.request().method() === "GET") {
+        await route.fulfill({
+          status: 200,
+          json: [
+            { _id: "sync-msg-1", text: "Missed message 1", senderId: "friend-id", receiverId: "my-user-id", createdAt: new Date().toISOString(), seen: false, delivered: true, status: "delivered" },
+          ],
+        })
+      } else {
+        await route.fulfill({ status: 405, json: { error: "Method Not Allowed" } })
+      }
+    })
+
+    // 5. Navigate to chat
     await page.goto("/chat")
 
-    // 5. Wait for sync message to appear
+    // 6. Wait for sync message to appear
     await expect(page.getByText("Missed message 1")).toBeVisible({ timeout: 10000 })
   })
 })
