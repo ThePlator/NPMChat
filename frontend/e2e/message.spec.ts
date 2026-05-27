@@ -42,31 +42,52 @@ test.describe("Message Flow", () => {
       }
     })
 
-    // 2. Mock the sidebar users (GET only)
-    await page.route(/\/api\/v1\/messages\/?$/, async (route) => {
-      if (route.request().method() === "GET") {
-        await route.fulfill({
-          status: 200,
-          json: {
-            users: [
-              {
-                _id: "friend-id",
-                name: "Alice",
-                email: "alice@example.com",
-                avatarUrl: "",
-                bio: "",
-                status: "online",
-              },
-            ],
-            unseenMessages: {},
-          },
-        })
-      } else {
-        await route.fulfill({
-          status: 405,
-          json: { error: "Method Not Allowed" },
-        })
+    // 2. Mock the sidebar users list (GET only)
+    await page.route("**/api/v1/messages", async (route) => {
+      if (route.request().method() !== "GET") {
+        await route.fulfill({ status: 405, json: { error: "Method Not Allowed" } })
+        return
       }
+
+      await route.fulfill({
+        status: 200,
+        json: {
+          users: [
+            {
+              _id: "friend-id",
+              name: "Alice",
+              email: "alice@example.com",
+              avatarUrl: "",
+              bio: "",
+              status: "online",
+            },
+          ],
+          unseenMessages: {},
+        },
+      })
+    })
+    await page.route("**/api/v1/messages/", async (route) => {
+      if (route.request().method() !== "GET") {
+        await route.fulfill({ status: 405, json: { error: "Method Not Allowed" } })
+        return
+      }
+
+      await route.fulfill({
+        status: 200,
+        json: {
+          users: [
+            {
+              _id: "friend-id",
+              name: "Alice",
+              email: "alice@example.com",
+              avatarUrl: "",
+              bio: "",
+              status: "online",
+            },
+          ],
+          unseenMessages: {},
+        },
+      })
     })
 
     // 3. Mock the chat history with the selected user (GET only)
@@ -130,13 +151,14 @@ test.describe("Message Flow", () => {
     await page.goto("/chat")
 
     // Wait for the users to load
-    const sidebarResponsePromise = page.waitForResponse(
-      (response) =>
-        response.url().includes("api/v1/messages") &&
-        !response.url().includes("friend-id") &&
-        response.request().method() === "GET" &&
-        response.status() === 200,
-    )
+    const sidebarResponsePromise = page.waitForResponse((response) => {
+      const url = response.url()
+      if (!url.includes("/api/v1/messages")) return false
+      if (url.includes("/api/v1/messages/")) return false
+      if (url.includes("/api/v1/messages/sync")) return false
+      if (url.includes("friend-id")) return false
+      return response.request().method() === "GET" && response.status() === 200
+    })
     await sidebarResponsePromise
 
     // Wait for "Alice" to appear in the sidebar
@@ -145,12 +167,14 @@ test.describe("Message Flow", () => {
     })
 
     // Select "Alice" from sidebar
-    const historyResponsePromise = page.waitForResponse(
-      (response) =>
-        response.url().includes("api/v1/messages/friend-id") &&
+    const historyResponsePromise = page.waitForResponse((response) => {
+      const url = response.url()
+      return (
+        url.includes("/api/v1/messages/friend-id") &&
         response.request().method() === "GET" &&
-        response.status() === 200,
-    )
+        response.status() === 200
+      )
+    })
     await page.getByText("Alice").first().click()
     await historyResponsePromise
 
