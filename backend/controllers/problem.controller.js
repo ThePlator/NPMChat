@@ -1,32 +1,69 @@
 import Problem from "../models/Problem.js"
 
+function isMissingTextIndexError(error) {
+  if (!error) return false
+  const msg = String(error.message || "")
+  return (
+    error.code === 27 || // MongoServerError: "IndexNotFound" for $text in some versions
+    msg.includes("text index required") ||
+    msg.includes("text index") && msg.includes("required") ||
+    msg.includes("no text index")
+  )
+}
+
 // GET /api/v1/problems
 // Query params: search, difficulty, category, page, limit
 export const getProblems = async (req, res) => {
   try {
     const { search, difficulty, category, page = 1, limit = 20 } = req.query
-    const query = { published: true }
-
-    if (search) {
-      query.$text = { $search: search }
-    }
-    if (difficulty) {
-      query.difficulty = difficulty
-    }
-    if (category) {
-      query.category = category
-    }
+    const baseQuery = { published: true }
+    if (difficulty) baseQuery.difficulty = difficulty
+    if (category) baseQuery.category = category
 
     const skip = (Number(page) - 1) * Number(limit)
 
-    // Only return list view fields to save bandwidth
-    const problems = await Problem.find(query)
-      .select("title slug difficulty category tags createdAt")
-      .sort(search ? { score: { $meta: "textScore" } } : { createdAt: -1 })
-      .skip(skip)
-      .limit(Number(limit))
+    const selectFields = "title slug difficulty category tags createdAt"
 
-    const total = await Problem.countDocuments(query)
+    let problems = []
+    let total = 0
+
+    if (search) {
+      const textQuery = { ...baseQuery, $text: { $search: search } }
+      try {
+        problems = await Problem.find(textQuery)
+          .select(selectFields)
+          .sort({ score: { $meta: "textScore" } })
+          .skip(skip)
+          .limit(Number(limit))
+        total = await Problem.countDocuments(textQuery)
+      } catch (err) {
+        if (!isMissingTextIndexError(err)) throw err
+
+        // Fallback for environments where autoIndex is disabled or indexes aren't built yet.
+        const safe = String(search).trim()
+        const rx = safe ? new RegExp(safe.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i") : null
+        const regexQuery = rx
+          ? {
+              ...baseQuery,
+              $or: [{ title: rx }, { category: rx }, { tags: rx }],
+            }
+          : baseQuery
+
+        problems = await Problem.find(regexQuery)
+          .select(selectFields)
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(Number(limit))
+        total = await Problem.countDocuments(regexQuery)
+      }
+    } else {
+      problems = await Problem.find(baseQuery)
+        .select(selectFields)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(Number(limit))
+      total = await Problem.countDocuments(baseQuery)
+    }
 
     res.status(200).json({
       problems,
