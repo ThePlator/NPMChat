@@ -145,10 +145,17 @@ test.describe("Message Flow", () => {
     })
 
     // Select "Alice" from sidebar
+    const historyResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes("api/v1/messages/friend-id") &&
+        response.request().method() === "GET" &&
+        response.status() === 200,
+    )
     await page.getByText("Alice").first().click()
+    await historyResponsePromise
 
     // Verify chat history loaded
-    await expect(page.getByText("Hi there")).toBeVisible()
+    await expect(page.getByText("Hi there")).toBeVisible({ timeout: 10000 })
 
     // Type a new message
     const input = page.getByPlaceholder("Type a message...")
