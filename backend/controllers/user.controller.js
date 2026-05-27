@@ -390,24 +390,26 @@ export const resetPassword = async (req, res) => {
 export const updateProfile = async (req, res) => {
   const { name, avatarUrl, bio } = req.body
   const userId = req.user._id // Assuming user ID is available in req.user
-  let updatedData
 
   try {
-    if (!avatarUrl) {
-      updatedData = await User.findByIdAndUpdate(
-        userId,
-        { name, bio },
-        { new: true },
-      )
-    } else {
-      const uploadedImage = await cloudinary.uploader.upload(avatarUrl)
+    const updateFields = { name, bio }
 
-      updatedData = await User.findByIdAndUpdate(
-        userId,
-        { name, avatarUrl: uploadedImage.secure_url, bio },
-        { new: true },
-      )
+    const nextAvatarUrl = (typeof avatarUrl === "string" ? avatarUrl : "").trim()
+    const currentAvatarUrl = (req.user?.avatarUrl || "").trim()
+
+    const shouldUploadNewAvatar =
+      nextAvatarUrl &&
+      nextAvatarUrl !== currentAvatarUrl &&
+      nextAvatarUrl.startsWith("data:")
+
+    if (shouldUploadNewAvatar) {
+      const uploadedImage = await cloudinary.uploader.upload(nextAvatarUrl)
+      updateFields.avatarUrl = uploadedImage.secure_url
     }
+
+    const updatedData = await User.findByIdAndUpdate(userId, updateFields, {
+      new: true,
+    })
 
     res.status(200).json({
       message: "Profile updated successfully.",
