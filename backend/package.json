@@ -13,6 +13,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@sendgrid/mail": "^8.1.6",
     "bcryptjs": "^3.0.2",
     "cloudinary": "^2.7.0",
     "cookie-parser": "^1.4.7",
@@ -23,6 +24,7 @@
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.16.1",
+    "node-cron": "^4.2.1",
     "nodemailer": "^8.0.7",
     "nodemon": "^3.1.10",
     "socket.io": "^4.8.1",

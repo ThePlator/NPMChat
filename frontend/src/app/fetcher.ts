@@ -3,20 +3,17 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
 if (!process.env.NEXT_PUBLIC_API_URL && process.env.NODE_ENV === "production") {
   console.error(
     "[NPMChat] WARNING: NEXT_PUBLIC_API_URL is not set. " +
-    "All API calls will target http://localhost:8080, which will fail in production. " +
-    "Set NEXT_PUBLIC_API_URL to your backend URL."
+      "All API calls will target http://localhost:8080, which will fail in production. " +
+      "Set NEXT_PUBLIC_API_URL to your backend URL.",
   )
 }
 
 const BASES = {
-  auth:
-    process.env.NEXT_PUBLIC_AUTH_API_BASE ||
-    `${API_URL}/api/v1/auth`,
+  auth: process.env.NEXT_PUBLIC_AUTH_API_BASE || `${API_URL}/api/v1/auth`,
   messages:
-    process.env.NEXT_PUBLIC_MESSAGES_API_BASE ||
-    `${API_URL}/api/v1/messages`,
+    process.env.NEXT_PUBLIC_MESSAGES_API_BASE || `${API_URL}/api/v1/messages`,
+  v1: `${API_URL}/api/v1`,
 }
-
 
 let token: string | null = null
 type RefreshListener = (newToken: string) => void
@@ -40,11 +37,11 @@ export function getToken() {
 // Singleton promise for handling multiple concurrent refresh triggers
 let refreshPromise: Promise<string | null> | null = null
 
-async function fetcher(
+export async function fetcher(
   path: string,
   options: RequestInit = {},
-  base: "auth" | "messages" = "messages",
-  isRetry = false
+  base: "auth" | "messages" | "v1" = "messages",
+  isRetry = false,
 ): Promise<any> {
   const headers: any = {
     "Content-Type": "application/json",
@@ -58,7 +55,7 @@ async function fetcher(
   const fetchOptions: RequestInit = {
     ...options,
     headers,
-    credentials: "include"
+    credentials: "include",
   }
 
   const res = await fetch(`${BASES[base]}${path}`, fetchOptions)
@@ -72,14 +69,19 @@ async function fetcher(
 
   if (!res.ok) {
     // If token expired, try to refresh
-    if (res.status === 401 && data.code === "TOKEN_EXPIRED" && !isRetry && !(base === "auth" && path === "/refresh")) {
+    if (
+      res.status === 401 &&
+      data.code === "TOKEN_EXPIRED" &&
+      !isRetry &&
+      !(base === "auth" && path === "/refresh")
+    ) {
       if (!refreshPromise) {
         refreshPromise = (async () => {
           try {
             const refreshRes = await fetch(`${BASES.auth}/refresh`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              credentials: "include"
+              credentials: "include",
             })
 
             if (refreshRes.ok) {
@@ -107,8 +109,8 @@ async function fetcher(
 
     const errorMsg = data?.message || res.statusText || "API Error"
     const error = new Error(errorMsg)
-      ; (error as any).data = data
-      ; (error as any).status = res.status
+    ;(error as any).data = data
+    ;(error as any).status = res.status
     throw error
   }
   return data
