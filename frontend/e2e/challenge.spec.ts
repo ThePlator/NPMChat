@@ -5,7 +5,18 @@ test.describe("Public Coding Challenges Feature", () => {
   // to isolate the frontend logic of the challenge rooms.
 
   test.beforeEach(async ({ page }) => {
-    // Mock auth API
+    // Mock auth API - refresh must succeed so check-auth is called
+    await page.route("**/api/v1/auth/refresh", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          token: "mock-token",
+        }),
+      })
+    })
+
     await page.route("**/api/v1/auth/check-auth", async (route) => {
       await route.fulfill({
         status: 200,
@@ -51,10 +62,13 @@ test.describe("Public Coding Challenges Feature", () => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify([
-          { _id: "prob1", title: "Two Sum" },
-          { _id: "prob2", title: "Valid Anagram" },
-        ]),
+        body: JSON.stringify({
+          problems: [
+            { _id: "prob1", title: "Two Sum" },
+            { _id: "prob2", title: "Valid Anagram" },
+          ],
+          pagination: { total: 2, page: 1, pages: 1 },
+        }),
       })
     })
 
@@ -101,7 +115,7 @@ test.describe("Public Coding Challenges Feature", () => {
     // Check challenge card
     await expect(page.getByText("Weekly Speedrun: Two Sum")).toBeVisible()
     await expect(page.getByText("Problem: Two Sum")).toBeVisible()
-    await expect(page.getByText("15 mins")).toBeVisible()
+    await expect(page.getByText("15 MINS")).toBeVisible()
   })
 
   test("should navigate to create challenge form and submit", async ({
@@ -110,19 +124,19 @@ test.describe("Public Coding Challenges Feature", () => {
     await page.goto("/challenges")
 
     // Click create button
-    await page.getByRole("button", { name: "Create Challenge" }).click()
+    await page.getByRole("button", { name: "CREATE CHALLENGE" }).click()
     await expect(page).toHaveURL(/\/challenges\/new/)
 
     // Fill form
     await page.fill(
-      "input[placeholder='e.g. Weekly Speedrun']",
+      "input[placeholder='e.g. WEEKLY SPEEDRUN']",
       "My Custom Room",
     )
     await page.selectOption("select", "prob2") // Valid Anagram
     await page.fill("input[type='number']", "20")
 
     // Submit form
-    await page.getByRole("button", { name: "Start Challenge" }).click()
+    await page.getByRole("button", { name: "START CHALLENGE" }).click()
 
     // Should navigate to the new room (mocked response returns id: new-challenge-99)
     await expect(page).toHaveURL(/\/challenges\/new-challenge-99/)
