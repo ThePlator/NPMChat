@@ -280,9 +280,12 @@ app.use("/api/health", (req, res) => {
   })
 })
 
+import problemRouter from "./routes/problem.route.js"
+
 // Apply strict limiter to auth routes, and standard limiter to message routes
 app.use("/api/v1/auth", authLimiter, userRouter)
 app.use("/api/v1/messages", standardLimiter, messageRouter)
+app.use("/api/v1/problems", standardLimiter, problemRouter)
 
 app.use("/", (req, res) => {
   res.send("NPMChat API is running")
