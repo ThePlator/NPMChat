@@ -162,4 +162,66 @@ test.describe("Message Flow", () => {
     // Verify the new message appears in the UI
     await expect(page.getByText("Hello Playwright!")).toBeVisible()
   })
+
+  test("should sync missed messages on reconnect", async ({ page }) => {
+    // 1. Mock auth
+    await page.route("**/api/v1/auth/refresh", async (route) => {
+      if (route.request().method() === "POST") {
+        await route.fulfill({
+          status: 200,
+          json: { token: "mock-access-token" },
+        })
+      } else {
+        await route.fulfill({ status: 405, json: { error: "Method Not Allowed" } })
+      }
+    })
+
+    await page.route("**/api/v1/auth/check-auth", async (route) => {
+      if (route.request().method() === "GET") {
+        await route.fulfill({
+          status: 200,
+          json: {
+            user: { id: "my-user-id", name: "Me", email: "me@example.com", avatarUrl: "", bio: "" },
+          },
+        })
+      } else {
+        await route.fulfill({ status: 405, json: { error: "Method Not Allowed" } })
+      }
+    })
+
+    // 2. Mock sidebar users
+    await page.route(/\/api\/v1\/messages\/?$/, async (route) => {
+      if (route.request().method() === "GET") {
+        await route.fulfill({
+          status: 200,
+          json: {
+            users: [{ _id: "friend-id", name: "Alice", email: "alice@example.com", avatarUrl: "", bio: "", status: "online" }],
+            unseenMessages: { "friend-id": 2 },
+          },
+        })
+      } else {
+        await route.fulfill({ status: 405, json: { error: "Method Not Allowed" } })
+      }
+    })
+
+    // 3. Mock sync endpoint returning missed messages
+    await page.route("**/api/v1/messages/sync", async (route) => {
+      if (route.request().method() === "GET") {
+        await route.fulfill({
+          status: 200,
+          json: [
+            { _id: "sync-msg-1", text: "Missed message 1", senderId: "friend-id", receiverId: "my-user-id", createdAt: new Date().toISOString(), seen: false, delivered: true, status: "delivered" },
+          ],
+        })
+      } else {
+        await route.fulfill({ status: 405, json: { error: "Method Not Allowed" } })
+      }
+    })
+
+    // 4. Navigate to chat
+    await page.goto("/chat")
+
+    // 5. Wait for sync message to appear
+    await expect(page.getByText("Missed message 1")).toBeVisible({ timeout: 10000 })
+  })
 })

@@ -17,6 +17,7 @@ const BASES = {
     `${API_URL}/api/v1/messages`,
 }
 
+const DEFAULT_TIMEOUT = 30000
 
 let token: string | null = null
 type RefreshListener = (newToken: string) => void
@@ -37,8 +38,29 @@ export function getToken() {
   return token
 }
 
+// Request queue for offline periods
+const pendingQueue: Array<() => void> = []
+let isOnline = true
+
+export function setOnlineStatus(online: boolean) {
+  isOnline = online
+  if (online) {
+    while (pendingQueue.length > 0) {
+      const request = pendingQueue.shift()
+      request?.()
+    }
+  }
+}
+
 // Singleton promise for handling multiple concurrent refresh triggers
 let refreshPromise: Promise<string | null> | null = null
+
+function fetchWithTimeout(url: string, options: RequestInit, timeout: number): Promise<Response> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeout)
+  const opts = { ...options, signal: controller.signal }
+  return fetch(url, opts).finally(() => clearTimeout(timeoutId))
+}
 
 async function fetcher(
   path: string,
@@ -54,14 +76,26 @@ async function fetcher(
   const t = getToken()
   if (t) headers["Authorization"] = `Bearer ${t}`
 
-  // Always include credentials for cookies (refresh token)
   const fetchOptions: RequestInit = {
     ...options,
     headers,
     credentials: "include"
   }
 
-  const res = await fetch(`${BASES[base]}${path}`, fetchOptions)
+  if (!isOnline) {
+    return new Promise((resolve, reject) => {
+      pendingQueue.push(async () => {
+        try {
+          const result = await fetcher(path, options, base, isRetry)
+          resolve(result)
+        } catch (e) {
+          reject(e)
+        }
+      })
+    })
+  }
+
+  const res = await fetchWithTimeout(`${BASES[base]}${path}`, fetchOptions, DEFAULT_TIMEOUT)
 
   let data
   try {
@@ -71,7 +105,6 @@ async function fetcher(
   }
 
   if (!res.ok) {
-    // If token expired, try to refresh
     if (res.status === 401 && data.code === "TOKEN_EXPIRED" && !isRetry && !(base === "auth" && path === "/refresh")) {
       if (!refreshPromise) {
         refreshPromise = (async () => {
@@ -100,7 +133,6 @@ async function fetcher(
 
       const refreshedToken = await refreshPromise
       if (refreshedToken) {
-        // Retry original request with NEW token
         return fetcher(path, options, base, true)
       }
     }
