@@ -117,9 +117,6 @@ test.describe("Message Flow", () => {
       }
     })
 
-    // Navigate to chat
-    await page.goto("/chat")
-
     // Wait for the users to load
     const sidebarResponsePromise = page.waitForResponse(
       (response) =>
@@ -128,6 +125,10 @@ test.describe("Message Flow", () => {
         response.request().method() === "GET" &&
         response.status() === 200,
     )
+
+    // Navigate to chat
+    await page.goto("/chat")
+
     await sidebarResponsePromise
 
     // Wait for "Alice" to appear in the sidebar
