@@ -37,7 +37,16 @@ const ChatPanels: React.FC<{ currentUser: any }> = ({ currentUser }) => {
   }
   async function handleProfileSave() {
     if (!profileDraft) return
-    await updateProfile(profileDraft)
+    const payload: Record<string, unknown> = {
+      name: profileDraft.name,
+      bio: profileDraft.bio,
+    }
+
+    if (profileDraft.avatarUrl !== user?.avatarUrl) {
+      payload.avatarUrl = profileDraft.avatarUrl
+    }
+
+    await updateProfile(payload)
     setShowProfile(false)
   }
   function handleLogout() {

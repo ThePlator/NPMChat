@@ -31,10 +31,10 @@ export default function ProtectedRoute({
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#b39ddb]/40 via-white to-[#39ff14]/20">
-        <div className="border-2 border-black bg-white p-8 brutal-shadow">
+        <div className="border-2 border-black bg-card text-foreground p-8 brutal-shadow">
           <div className="text-center">
             <div className="animate-spin w-8 h-8 border-4 border-[#b39ddb] border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p className="font-bold text-black">Loading...</p>
+            <p className="font-bold text-foreground">Loading...</p>
           </div>
         </div>
       </div>

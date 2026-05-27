@@ -54,3 +54,13 @@ next-env.d.ts
 
 *.sh
 CODEBASE_AUDIT.md
+
+# Ignored docs and local plans
+package-lock.json
+NPMChat_Feature_Specification.pdf
+spec_text.txt
+*plan*
+*Plan*
+plan.md
+project_plan.md
+ISSUE_TEMPLATE/

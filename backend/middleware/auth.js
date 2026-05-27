@@ -10,7 +10,20 @@ export const protectRoute = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET)
-    const user = await User.findById(decoded.id).select("-password -refreshTokenHash -refreshTokenId")
+
+    if (decoded.isGuest) {
+      req.user = {
+        _id: decoded.id,
+        name: decoded.name,
+        isGuest: true,
+        roomId: decoded.roomId,
+      }
+      return next()
+    }
+
+    const user = await User.findById(decoded.id).select(
+      "-password -refreshTokenHash -refreshTokenId",
+    )
     if (!user) {
       return res.status(401).json({ message: "Not authorized, user not found" })
     }
@@ -18,7 +31,9 @@ export const protectRoute = async (req, res, next) => {
     next()
   } catch (error) {
     if (error.name === "TokenExpiredError") {
-      return res.status(401).json({ code: "TOKEN_EXPIRED", message: "Access token expired" })
+      return res
+        .status(401)
+        .json({ code: "TOKEN_EXPIRED", message: "Access token expired" })
     }
     console.error("Token verification failed:", error)
     res.status(401).json({ message: "Not authorized, token failed" })

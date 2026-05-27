@@ -1,0 +1,55 @@
+name: Issue Management (GSSoC & Duplicates)
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+
+jobs:
+  setup-issue:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add GSSoC Label
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const issue_number = context.payload.issue.number;
+            
+            const label = 'gssoc:approved';
+            const color = 'FD873D'; 
+            const description = 'Approved for GirlScript Summer of Code';
+            
+            // Try to update the label if it exists, otherwise create it
+            try {
+              await github.rest.issues.updateLabel({
+                owner, repo, name: label, new_name: label, color, description
+              });
+            } catch (err) {
+              if (err.status === 404) {
+                try {
+                  await github.rest.issues.createLabel({
+                    owner, repo, name: label, color, description
+                  });
+                } catch (createErr) {
+                  if (createErr.status !== 422) throw createErr;
+                }
+              } else {
+                throw err;
+              }
+            }
+            
+            // Add the GSSoC label to the new issue
+            await github.rest.issues.addLabels({
+              owner, repo, issue_number, labels: [label]
+            });
+
+      - name: Check for Duplicate Issues
+        uses: actions-cool/issues-similarity-analysis@v1.1.0
+        with:
+          filter-threshold: 0.8
+          comment-title: '### 🤖 Potential Duplicate Issues Found'
+          comment-body: 'To make it easy to track duplicates, an automated check has found these similar existing issues. Please verify if your issue is a duplicate:'

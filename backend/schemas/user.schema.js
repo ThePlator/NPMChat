@@ -65,3 +65,9 @@ export const verifyOTPSchema = z.object({
     .string({ required_error: "OTP is required" })
     .length(6, "OTP must be exactly 6 digits"),
 })
+
+export const updateProfileSchema = z.object({
+  name: z.string().trim().min(2).max(50).optional(),
+  bio: z.string().max(500).optional(),
+  avatarUrl: z.string().optional(),
+})

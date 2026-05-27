@@ -22,12 +22,12 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
           cache-dependency-path: |
-            backend/package-lock.json
-            frontend/package-lock.json
+            backend/package.json
+            frontend/package.json
 
       - name: Install Backend Dependencies
         working-directory: ./backend
-        run: npm ci
+        run: npm install
 
       - name: Run Backend Tests & Coverage
         working-directory: ./backend
@@ -35,12 +35,17 @@ jobs:
         
       - name: Install Frontend Dependencies
         working-directory: ./frontend
-        run: npm ci
+        run: npm install
 
       - name: Install Playwright Browsers
         working-directory: ./frontend
         run: npx playwright install --with-deps
         
       - name: Run Frontend E2E Tests
-        working-directory: ./frontend
-        run: npx playwright test
+        run: |
+          cd backend
+          echo "JWT_SECRET=github_actions_secret_123" > .env
+          npm run start &
+          sleep 5
+          cd ../frontend
+          npx playwright test

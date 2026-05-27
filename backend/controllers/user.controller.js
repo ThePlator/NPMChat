@@ -19,7 +19,8 @@ function hashResetToken(token) {
 
 function resetTokenExpiryDate() {
   const ttlMinutes = Number(process.env.RESET_TOKEN_TTL_MINUTES || 15)
-  const safeTtl = Number.isFinite(ttlMinutes) && ttlMinutes > 0 ? ttlMinutes : 15
+  const safeTtl =
+    Number.isFinite(ttlMinutes) && ttlMinutes > 0 ? ttlMinutes : 15
   return new Date(Date.now() + safeTtl * 60 * 1000)
 }
 
@@ -105,7 +106,8 @@ export const signup = async (req, res) => {
       }
       if (decoded.email.toLowerCase() !== email.toLowerCase()) {
         return res.status(400).json({
-          message: "Email verification session does not match this signup email.",
+          message:
+            "Email verification session does not match this signup email.",
         })
       }
     } catch (err) {
@@ -222,6 +224,49 @@ export const login = async (req, res) => {
   }
 }
 
+export const loginGuest = async (req, res) => {
+  const { name, roomId } = req.body
+
+  try {
+    if (!name || !roomId) {
+      return res
+        .status(400)
+        .json({ message: "Name and roomId are required for guest login." })
+    }
+
+    const guestId = `guest-${crypto.randomUUID()}`
+
+    // Generate a 24-hour guest token
+    const guestToken = jwt.sign(
+      {
+        id: guestId,
+        name,
+        isGuest: true,
+        roomId,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "24h" },
+    )
+
+    return res.status(200).json({
+      message: "Guest login successful.",
+      user: {
+        id: guestId,
+        email: null,
+        name: name,
+        avatarUrl: "",
+        bio: "Ephemeral Guest Account",
+        isGuest: true,
+        roomId: roomId,
+      },
+      token: guestToken,
+    })
+  } catch (error) {
+    console.error("Error during guest login:", error)
+    return res.status(500).json({ message: "Internal server error." })
+  }
+}
+
 export const refresh = async (req, res) => {
   const { refreshToken, refreshTokenId } = req.cookies || {}
 
@@ -299,6 +344,8 @@ export const checkAuth = (req, res) => {
         name: req.user.name,
         avatarUrl: req.user.avatarUrl,
         bio: req.user.bio,
+        isGuest: req.user.isGuest,
+        roomId: req.user.roomId,
       },
     })
   } catch (error) {
@@ -327,7 +374,8 @@ export const forgotPassword = async (req, res) => {
     // Always return a generic success response to avoid user enumeration.
     if (!user) {
       return res.status(200).json({
-        message: "If an account exists for that email, a password reset link has been sent.",
+        message:
+          "If an account exists for that email, a password reset link has been sent.",
       })
     }
 
@@ -367,7 +415,9 @@ export const resetPassword = async (req, res) => {
     })
 
     if (!user) {
-      return res.status(400).json({ message: "Invalid or expired reset token." })
+      return res
+        .status(400)
+        .json({ message: "Invalid or expired reset token." })
     }
 
     const salt = await bcrypt.genSalt(10)
@@ -390,24 +440,26 @@ export const resetPassword = async (req, res) => {
 export const updateProfile = async (req, res) => {
   const { name, avatarUrl, bio } = req.body
   const userId = req.user._id // Assuming user ID is available in req.user
-  let updatedData
 
   try {
-    if (!avatarUrl) {
-      updatedData = await User.findByIdAndUpdate(
-        userId,
-        { name, bio },
-        { new: true },
-      )
-    } else {
-      const uploadedImage = await cloudinary.uploader.upload(avatarUrl)
+    const updateFields = { name, bio }
 
-      updatedData = await User.findByIdAndUpdate(
-        userId,
-        { name, avatarUrl: uploadedImage.secure_url, bio },
-        { new: true },
-      )
+    const nextAvatarUrl = (typeof avatarUrl === "string" ? avatarUrl : "").trim()
+    const currentAvatarUrl = (req.user?.avatarUrl || "").trim()
+
+    const shouldUploadNewAvatar =
+      nextAvatarUrl &&
+      nextAvatarUrl !== currentAvatarUrl &&
+      nextAvatarUrl.startsWith("data:")
+
+    if (shouldUploadNewAvatar) {
+      const uploadedImage = await cloudinary.uploader.upload(nextAvatarUrl)
+      updateFields.avatarUrl = uploadedImage.secure_url
     }
+
+    const updatedData = await User.findByIdAndUpdate(userId, updateFields, {
+      new: true,
+    })
 
     res.status(200).json({
       message: "Profile updated successfully.",
