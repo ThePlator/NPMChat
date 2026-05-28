@@ -78,6 +78,11 @@ export default function ChatSidebar({
                 ></span>
                 <span className="text-gray-400">{user.status}</span>
               </div>
+              {user.unread > 0 && (
+                <div className="truncate text-xs text-gray-500 mt-0.5">
+                  New messages
+                </div>
+              )}
             </div>
             {user.unread > 0 && (
               <span className="ml-2 px-2 py-0.5 rounded-full bg-[#b39ddb] text-foreground text-xs font-extrabold border-2 border-black">

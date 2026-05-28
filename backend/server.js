@@ -95,6 +95,7 @@ export const io = new Server(server, {
 })
 
 export const userSockets = new Map() // userId -> Set<socketId>
+export const userLastActive = new Map() // userId -> timestamp
 
 // Socket rate limiting: max 20 concurrent connections per IP
 const socketConnectionCounts = new Map()
@@ -145,6 +146,34 @@ io.use(async (socket, next) => {
   }
 })
 
+// Periodic delivery sweep as fallback (every 15s)
+setInterval(async () => {
+  try {
+    const undeliveredMessages = await Message.find({
+      delivered: false,
+      status: { $in: ["sent", "sending"] },
+    })
+
+    for (const msg of undeliveredMessages) {
+      const now = new Date()
+      msg.delivered = true
+      msg.status = "delivered"
+      msg.deliveredAt = now
+      await msg.save()
+
+      io.to(msg.senderId.toString()).emit("messageDelivered", {
+        messageId: msg._id.toString(),
+        status: "delivered",
+        deliveredAt: now.toISOString(),
+      })
+
+      io.to(msg.receiverId.toString()).emit("newMessage", msg.toObject())
+    }
+  } catch (error) {
+    console.error("Error during periodic delivery sweep:", error)
+  }
+}, 15000)
+
 io.on("connection", async (socket) => {
   const userId = socket.userId
   const userIdStr = userId ? userId.toString() : ""
@@ -154,6 +183,7 @@ io.on("connection", async (socket) => {
       userSockets.set(userIdStr, new Set())
     }
     userSockets.get(userIdStr).add(socket.id)
+    userLastActive.set(userIdStr, Date.now())
     socket.join(userIdStr)
     socket.data.username = socket.isGuest ? socket.guestName : userIdStr
     socket.data.isGuest = socket.isGuest
@@ -182,12 +212,19 @@ io.on("connection", async (socket) => {
 
         for (const msg of undeliveredMessages) {
           try {
+            const now = new Date()
             msg.delivered = true
+            msg.status = "delivered"
+            msg.deliveredAt = now
             await msg.save()
 
             io.to(msg.senderId.toString()).emit("messageDelivered", {
               messageId: msg._id.toString(),
+              status: "delivered",
+              deliveredAt: now.toISOString(),
             })
+
+            io.to(msg.receiverId.toString()).emit("newMessage", msg.toObject())
           } catch (saveErr) {
             if (saveErr.name === "VersionError") {
               continue
@@ -283,6 +320,7 @@ io.on("connection", async (socket) => {
           userSockets.delete(userIdStr)
         }
       }
+      userLastActive.set(userIdStr, Date.now())
       console.log(`User disconnected: ${userIdStr} (socket: ${socket.id})`)
     }
     io.emit("getOnlineUsers", Array.from(userSockets.keys()))

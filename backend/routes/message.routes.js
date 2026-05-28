@@ -5,9 +5,11 @@ import {
   getMediaMessages,
   getUserForSidebar,
   markMessagesAsSeen,
+  markConversationSeen,
   sendMessage,
   editMessage,
   deleteMessage,
+  syncMessages,
 } from "../controllers/message.controller.js"
 
 const messageRouter = express.Router()
@@ -64,6 +66,24 @@ messageRouter.get("/media/:userId", protectRoute, getMediaMessages)
 
 /**
  * @swagger
+ * /api/v1/messages/sync:
+ *   get:
+ *     summary: Get unseen messages for reconnecting clients
+ *     tags: [Messages]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of unseen messages
+ *       401:
+ *         description: Missing or invalid JWT
+ *       500:
+ *         description: Internal server error
+ */
+messageRouter.get("/sync", protectRoute, syncMessages)
+
+/**
+ * @swagger
  * /api/v1/messages/{userId}:
  *   get:
  *     summary: Get messages exchanged with a user
@@ -113,6 +133,7 @@ messageRouter.get("/:userId", protectRoute, getMessages)
  *         description: Internal server error
  */
 messageRouter.put("/mark-as-seen/:messageId", protectRoute, markMessagesAsSeen)
+messageRouter.put("/mark-conversation-seen/:senderId", protectRoute, markConversationSeen)
 
 /**
  * @swagger

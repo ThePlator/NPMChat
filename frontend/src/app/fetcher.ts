@@ -15,6 +15,7 @@ const BASES = {
   v1: `${API_URL}/api/v1`,
 }
 
+const DEFAULT_TIMEOUT = 30000
 let token: string | null = null
 type RefreshListener = (newToken: string) => void
 const listeners: RefreshListener[] = []
@@ -34,8 +35,29 @@ export function getToken() {
   return token
 }
 
+// Request queue for offline periods
+const pendingQueue: Array<() => void> = []
+let isOnline = true
+
+export function setOnlineStatus(online: boolean) {
+  isOnline = online
+  if (online) {
+    while (pendingQueue.length > 0) {
+      const request = pendingQueue.shift()
+      request?.()
+    }
+  }
+}
+
 // Singleton promise for handling multiple concurrent refresh triggers
 let refreshPromise: Promise<string | null> | null = null
+
+function fetchWithTimeout(url: string, options: RequestInit, timeout: number): Promise<Response> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeout)
+  const opts = { ...options, signal: controller.signal }
+  return fetch(url, opts).finally(() => clearTimeout(timeoutId))
+}
 
 export async function fetcher(
   path: string,
@@ -51,14 +73,26 @@ export async function fetcher(
   const t = getToken()
   if (t) headers["Authorization"] = `Bearer ${t}`
 
-  // Always include credentials for cookies (refresh token)
   const fetchOptions: RequestInit = {
     ...options,
     headers,
     credentials: "include",
   }
 
-  const res = await fetch(`${BASES[base]}${path}`, fetchOptions)
+  if (!isOnline) {
+    return new Promise((resolve, reject) => {
+      pendingQueue.push(async () => {
+        try {
+          const result = await fetcher(path, options, base, isRetry)
+          resolve(result)
+        } catch (e) {
+          reject(e)
+        }
+      })
+    })
+  }
+
+  const res = await fetchWithTimeout(`${BASES[base]}${path}`, fetchOptions, DEFAULT_TIMEOUT)
 
   let data
   try {
@@ -68,13 +102,7 @@ export async function fetcher(
   }
 
   if (!res.ok) {
-    // If token expired, try to refresh
-    if (
-      res.status === 401 &&
-      data.code === "TOKEN_EXPIRED" &&
-      !isRetry &&
-      !(base === "auth" && path === "/refresh")
-    ) {
+    if (res.status === 401 && data.code === "TOKEN_EXPIRED" && !isRetry && !(base === "auth" && path === "/refresh")) {
       if (!refreshPromise) {
         refreshPromise = (async () => {
           try {
@@ -102,7 +130,6 @@ export async function fetcher(
 
       const refreshedToken = await refreshPromise
       if (refreshedToken) {
-        // Retry original request with NEW token
         return fetcher(path, options, base, true)
       }
     }
@@ -117,12 +144,12 @@ export async function fetcher(
 }
 
 export const api = {
-  get: (path: string, base: "auth" | "messages" = "messages") =>
+  get: (path: string, base: "auth" | "messages" | "v1" = "messages") =>
     fetcher(path, { method: "GET" }, base),
-  post: (path: string, body?: any, base: "auth" | "messages" = "messages") =>
+  post: (path: string, body?: any, base: "auth" | "messages" | "v1" = "messages") =>
     fetcher(path, { method: "POST", body: JSON.stringify(body) }, base),
-  put: (path: string, body?: any, base: "auth" | "messages" = "messages") =>
+  put: (path: string, body?: any, base: "auth" | "messages" | "v1" = "messages") =>
     fetcher(path, { method: "PUT", body: JSON.stringify(body) }, base),
-  delete: (path: string, base: "auth" | "messages" = "messages") =>
+  delete: (path: string, base: "auth" | "messages" | "v1" = "messages") =>
     fetcher(path, { method: "DELETE" }, base),
 }
