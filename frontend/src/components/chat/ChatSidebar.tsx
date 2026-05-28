@@ -1,7 +1,16 @@
 "use client"
 import React from "react"
+import Image from "next/image"
 import { getInitials } from "../../lib/utils"
 
+export interface ChatUser {
+  id: string
+  _id?: string
+  name: string
+  avatarUrl?: string
+  status?: string
+  unread: number
+}
 
 export default function ChatSidebar({
   users,
@@ -12,9 +21,9 @@ export default function ChatSidebar({
   search,
   setSearch,
 }: {
-  users: any[]
-  selectedUser: any
-  onUserSelect: (user: any) => void
+  users: ChatUser[]
+  selectedUser: ChatUser
+  onUserSelect: (user: ChatUser) => void
   onProfile: () => void
   onLogout: () => void
   search: string
@@ -57,9 +66,11 @@ export default function ChatSidebar({
           >
             <div className="w-10 h-10 rounded-full bg-[#39ff14] flex items-center justify-center text-lg font-extrabold border-2 border-sidebar-border overflow-hidden select-none">
               {user.avatarUrl ? (
-                <img
+                <Image
                   src={user.avatarUrl}
                   alt={user.name}
+                  width={40}
+                  height={40}
                   className="w-full h-full object-cover"
                 />
               ) : (
