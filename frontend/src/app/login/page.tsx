@@ -7,12 +7,10 @@ import { Eye, EyeOff } from "lucide-react"
 
 import ProtectedRoute from "../../components/ProtectedRoute"
 import { toast } from "sonner"
-import ReCAPTCHA from "react-google-recaptcha";
+import ReCAPTCHA from "react-google-recaptcha"
 
 const accent = "#b39ddb" // pastel purple
 const accentGreen = "#39ff14" // neon green
-
-
 
 function LoginPageContent() {
   const router = useRouter()
@@ -57,9 +55,10 @@ function LoginPageContent() {
       setTimeout(() => {
         router.push("/chat")
       }, 1500)
-    } catch (err: any) {
-      setErrors({ email: err.message || "Login failed" })
-      toast.error(err.message || "Login failed. Please try again.")
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Login failed"
+      setErrors({ email: message })
+      toast.error(message || "Login failed. Please try again.")
     } finally {
       setLoading(false)
     }
@@ -127,9 +126,7 @@ function LoginPageContent() {
           <div className="flex justify-center">
             <ReCAPTCHA
               sitekey={recaptchaSiteKey}
-              onChange={(token: string | null) =>
-                setCaptchaToken(token)
-              }
+              onChange={(token: string | null) => setCaptchaToken(token)}
             />
           </div>
         )}
