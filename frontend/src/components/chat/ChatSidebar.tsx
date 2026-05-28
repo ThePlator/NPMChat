@@ -1,5 +1,7 @@
 "use client"
 import React from "react"
+import { getInitials } from "../../lib/utils"
+
 
 export default function ChatSidebar({
   users,
@@ -18,12 +20,11 @@ export default function ChatSidebar({
   search: string
   setSearch: (s: string) => void
 }) {
-  console.log("users", users)
   return (
-    <aside className="flex flex-col w-full md:w-80 bg-[#e9d5ff] dark:bg-background border-r-2 border-sidebar-border  h-full">
+    <aside className="flex flex-col w-full md:w-80 bg-[#e9d5ff] dark:bg-background border-r-2 border-sidebar-border h-full text-foreground">
       {/* Logo */}
-      <div className="flex items-center gap-3 px-4 py-4 border-b-2 border-sidebar-border ">
-        <div className="w-8 h-8 bg-[#39ff14] rounded-lg flex items-center justify-center text-xl font-extrabold border-2 border-sidebar-border  select-none">
+      <div className="flex items-center gap-3 px-4 py-4 border-b-2 border-sidebar-border">
+        <div className="w-8 h-8 bg-[#39ff14] rounded-lg flex items-center justify-center text-xl font-extrabold border-2 border-sidebar-border select-none">
           N
         </div>
         <span className="inline text-xl font-extrabold tracking-tight text-primary">
@@ -31,13 +32,13 @@ export default function ChatSidebar({
         </span>
       </div>
       {/* Search */}
-      <div className="px-4 py-2 border-b-2 border-sidebar-border ">
+      <div className="px-4 py-2 border-b-2 border-sidebar-border">
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search..."
-          className="w-full px-3 py-2 border-2 border-sidebar-border  rounded-lg bg-accent text-black font-bold text-base focus:outline-none focus:border-[#39ff14] placeholder:text-gray-400"
+          className="w-full px-3 py-2 border-2 border-sidebar-border rounded-lg bg-card text-foreground font-bold text-base focus:outline-none focus:border-[#39ff14] placeholder:text-gray-400"
         />
       </div>
       {/* User List */}
@@ -54,15 +55,17 @@ export default function ChatSidebar({
               }
             `}
           >
-            <div className="w-10 h-10 rounded-full bg-[#39ff14] flex items-center justify-center text-xl font-extrabold border-2 border-sidebar-border ">
+            <div className="w-10 h-10 rounded-full bg-[#39ff14] flex items-center justify-center text-lg font-extrabold border-2 border-sidebar-border overflow-hidden select-none">
               {user.avatarUrl ? (
                 <img
                   src={user.avatarUrl}
                   alt={user.name}
-                  className="w-full h-full object-cover rounded-full"
+                  className="w-full h-full object-cover"
                 />
               ) : (
-                user.name[0]
+                <span className="flex items-center justify-center w-full h-full text-foreground uppercase">
+                  {getInitials(user.name)}
+                </span>
               )}
             </div>
             <div className="flex-1 min-w-0">
@@ -73,11 +76,11 @@ export default function ChatSidebar({
                     user.status === "online" ? "bg-[#39ff14]" : "bg-gray-400"
                   }`}
                 ></span>
-                <span className="text-gray-600">{user.status}</span>
+                <span className="text-gray-400">{user.status}</span>
               </div>
             </div>
             {user.unread > 0 && (
-              <span className="ml-2 px-2 py-0.5 rounded-full bg-[#b39ddb] text-black text-xs font-extrabold border-2 border-black">
+              <span className="ml-2 px-2 py-0.5 rounded-full bg-[#b39ddb] text-foreground text-xs font-extrabold border-2 border-black">
                 {user.unread}
               </span>
             )}

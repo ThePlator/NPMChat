@@ -81,19 +81,72 @@
 
 Follow these steps to set up **CodeChat** on your local machine.
 
----
-
-| Step | Action | Command / Details |
-|------|--------|-------------------|
-| **1**| **Install Prerequisites**  | - [Node.js v18+](https://nodejs.org/) <br> - MongoDB (local or [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)) <br> - [Cloudinary Account](https://cloudinary.com/) <br> - *(Optional)* Clerk account for authentication |
-| **2** | **Clone Repository** | ```bash<br>git clone https://github.com/ThePlator/NPMChat<br>cd NPMChat<br>``` |
-| **3** | **Setup Backend** | ```bash<br>cd backend<br>npm install<br>``` |
-|      | **Configure Environment** | Create `.env` file in `backend/` with: <br>```env<br>PORT=8080<br>NODE_ENV=development<br>CLIENT_URL=http://localhost:3000<br>MONGODB_URI=your_mongodb_connection_string<br>JWT_SECRET=your_jwt_secret<br>CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name<br>CLOUDINARY_API_KEY=your_cloudinary_api_key<br>CLOUDINARY_API_SECRET=your_cloudinary_api_secret<br>``` |
-|      | **Run Backend** | ```bash<br>npm run dev<br>``` <br>Backend runs at **[http://localhost:8080](http://localhost:8080)** |
-| **4**| **Setup Frontend** | ```bash<br>cd ../frontend<br>npm install<br>``` |
-|      | **Configure Environment** | Create `.env.local` in `frontend/` with: <br>```env<br>NEXT_PUBLIC_API_URL=http://localhost:8080<br>``` |
-|      | **Run Frontend** | ```bash<br>npm run dev<br>``` <br>Frontend runs at **[http://localhost:3000](http://localhost:3000)** |
-| **5**| **Done! 🎉** | You now have **CodeChat** running locally with both frontend & backend active. |
+<table>
+  <thead>
+    <tr>
+      <th>Step</th>
+      <th>Action</th>
+      <th>Command / Details</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><b>1</b></td>
+      <td><b>Install Prerequisites</b></td>
+      <td>
+        <ul>
+          <li><a href="https://nodejs.org/">Node.js v18+</a></li>
+          <li>MongoDB (local or <a href="https://www.mongodb.com/cloud/atlas">MongoDB Atlas</a>)</li>
+          <li><a href="https://cloudinary.com/">Cloudinary Account</a></li>
+          <li><i>(Optional)</i> Clerk account for authentication</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><b>2</b></td>
+      <td><b>Clone Repository</b></td>
+      <td>
+        <pre><code>git clone https://github.com/ThePlator/NPMChat
+cd NPMChat</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td><b>3</b></td>
+      <td><b>Setup Backend</b></td>
+      <td>
+        <pre><code>cd backend
+npm install</code></pre>
+        <b>Configure Environment:</b> Create <code>.env</code> file in <code>backend/</code> with:<br>
+        <pre><code>MONGODB_URI=your_mongodb_connection_string
+JWT_SECRET=your_jwt_secret
+CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
+CLOUDINARY_API_KEY=your_cloudinary_api_key
+CLOUDINARY_API_SECRET=your_cloudinary_api_secret</code></pre>
+        <b>Run Backend:</b><br>
+        <pre><code>npm run dev</code></pre>
+        Backend runs at <b><a href="http://localhost:8080">http://localhost:8080</a></b>
+      </td>
+    </tr>
+    <tr>
+      <td><b>4</b></td>
+      <td><b>Setup Frontend</b></td>
+      <td>
+        <pre><code>cd ../frontend
+npm install</code></pre>
+        <b>Configure Environment:</b> Create <code>.env.local</code> in <code>frontend/</code> with:<br>
+        <pre><code>NEXT_PUBLIC_API_URL=http://localhost:8080</code></pre>
+        <b>Run Frontend:</b><br>
+        <pre><code>npm run dev</code></pre>
+        Frontend runs at <b><a href="http://localhost:3000">http://localhost:3000</a></b>
+      </td>
+    </tr>
+    <tr>
+      <td><b>5</b></td>
+      <td><b>Done! 🎉</b></td>
+      <td>You now have <b>CodeChat</b> running locally with both frontend & backend active.</td>
+    </tr>
+  </tbody>
+</table>
 
 ---
 

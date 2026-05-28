@@ -9,8 +9,6 @@ services:
     branch: main
     healthCheckPath: /api/health
     envVars:
-      - key: PORT
-        value: "8080"
       - key: NODE_ENV
         value: "production"
       - key: CLIENT_URL

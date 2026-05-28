@@ -1,4 +1,6 @@
 import React, { useRef } from "react"
+import { getInitials } from "../../lib/utils"
+
 
 export default function ProfileModal({
   open,
@@ -30,9 +32,9 @@ export default function ProfileModal({
   if (!open) return null
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-2">
-      <div className="relative bg-accent border-4 border-sidebar-border rounded-lg p-4 md:p-8 w-full max-w-xs md:max-w-md shadow-lg flex flex-col gap-4 md:gap-6">
+      <div className="relative bg-card text-foreground border-4 border-sidebar-border rounded-lg p-4 md:p-8 w-full max-w-xs md:max-w-md shadow-lg flex flex-col gap-4 md:gap-6">
         <button
-          className="absolute top-3 right-3 text-black font-extrabold text-2xl hover:text-[#39ff14]"
+          className="absolute top-3 right-3 text-foreground font-extrabold text-2xl hover:text-[#39ff14]"
           onClick={onClose}
           aria-label="Close"
         >
@@ -40,7 +42,7 @@ export default function ProfileModal({
         </button>
         <div className="flex flex-col items-center gap-3">
           <div
-            className="w-24 h-24 rounded-full bg-[#b39ddb] flex items-center justify-center border-4 border-black cursor-pointer hover:bg-[#39ff14]"
+            className="w-24 h-24 rounded-full bg-[#b39ddb] flex items-center justify-center border-4 border-black cursor-pointer hover:bg-[#39ff14] overflow-hidden select-none"
             onClick={() => fileInputRef.current?.click()}
             title="Change photo"
           >
@@ -48,11 +50,11 @@ export default function ProfileModal({
               <img
                 src={profileDraft.avatarUrl}
                 alt="avatar"
-                className="w-full h-full object-cover rounded-full"
+                className="w-full h-full object-cover"
               />
             ) : (
-              <span className="text-3xl font-bold text-black">
-                {profileDraft.name[0]}
+              <span className="text-3xl font-extrabold text-black uppercase">
+                {getInitials(profileDraft.name)}
               </span>
             )}
           </div>
@@ -68,7 +70,7 @@ export default function ProfileModal({
         <label className="flex flex-col gap-1 text-primary font-bold text-lg">
           Name
           <input
-            className="border-2 border-sidebar-border text-black px-4 py-2 text-lg bg-[#f3e8ff] focus:bg-[#b39ddb]/60 focus:outline-none focus:border-[#39ff14] transition-all rounded-lg"
+            className="border-2 border-sidebar-border text-foreground px-4 py-2 text-lg bg-card focus:bg-[#b39ddb]/60 focus:outline-none focus:border-[#39ff14] transition-all rounded-lg"
             type="text"
             value={profileDraft.name}
             onChange={(e) =>
@@ -79,7 +81,7 @@ export default function ProfileModal({
         <label className="flex flex-col gap-1 text-primary font-bold text-lg">
           Bio
           <textarea
-            className="border-2 border-sidebar-border px-4 py-2 text-black text-lg bg-[#eaffea]  focus:bg-[#39ff14]/40 focus:outline-none focus:border-[#b39ddb] transition-all rounded-lg min-h-[60px]"
+            className="border-2 border-sidebar-border px-4 py-2 text-foreground text-lg bg-card focus:bg-[#39ff14]/40 focus:outline-none focus:border-[#b39ddb] transition-all rounded-lg min-h-[60px]"
             value={profileDraft.bio}
             onChange={(e) =>
               setProfileDraft((p: any) => ({ ...p, bio: e.target.value }))

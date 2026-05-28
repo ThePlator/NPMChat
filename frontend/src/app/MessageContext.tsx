@@ -5,41 +5,67 @@ import React, {
   useEffect,
   useCallback,
 } from "react"
-import { api } from "./fetcher"
+import { api, getToken, addTokenRefreshListener } from "./fetcher"
 import { io, Socket } from "socket.io-client"
 import { User } from "./AuthContext" // CHANGED: imported User interface
+import { toast } from "sonner" // ADDED: sonner for notifications
 
-export interface Message { // CHANGED: Added Message interface
-  _id: string;
-  text?: string;
-  senderId: string;
-  receiverId: string;
-  timestamp: string;
-  seen: boolean;
-  image?: string;
+export interface Message {
+  // CHANGED: Added Message interface
+  _id: string
+  text?: string
+  senderId: string
+  receiverId: string
+  timestamp: string
+  createdAt?: string
+  seen: boolean
+  delivered?: boolean
+  image?: string
+  isEdited?: boolean
+  deleted?: boolean
+  editedAt?: string
+  deletedAt?: string
 }
 
-export interface MessageContextType { // CHANGED: Added MessageContextType
-  users: User[];
-  unseenMessages: Record<string, number>;
-  messages: Message[];
-  selectedUser: User | null;
-  setSelectedUser: (user: User | null) => void;
-  fetchUsers: () => void;
-  fetchMessages: (userId: string) => void;
-  markAsSeen: (messageId: string) => Promise<any>;
-  sendMessage: (receiverId: string, text: string, image?: string) => Promise<void>;
-  loadingUsers: boolean;
-  loadingMessages: boolean;
-  error: string | null;
-  setError: (error: string | null) => void;
-  socket: Socket | null;
+export interface MessageContextType {
+  // CHANGED: Added MessageContextType
+  users: User[]
+  unseenMessages: Record<string, number>
+  messages: Message[]
+  selectedUser: User | null
+  setSelectedUser: (user: User | null) => void
+  fetchUsers: () => void
+  fetchMessages: (userId: string) => void
+  fetchMediaMessages: (
+    userId: string,
+    page?: number,
+    limit?: number,
+  ) => Promise<any>
+  markAsSeen: (messageId: string) => Promise<any>
+  sendMessage: (
+    receiverId: string,
+    text: string,
+    image?: string,
+  ) => Promise<void>
+  loadingUsers: boolean
+  loadingMessages: boolean
+  error: string | null
+  setError: (error: string | null) => void
+  socket: Socket | null
+  editMessage: (messageId: string, text: string) => Promise<void>
+  deleteMessage: (messageId: string) => Promise<void>
+  socketConnected: boolean
+  socketError: string | null
 }
 
 const MessageContext = createContext<MessageContextType | null>(null) // CHANGED: Use MessageContextType instead of any
 
 export function useMessageContext() {
-  return useContext(MessageContext)
+  const context = useContext(MessageContext)
+  if (!context) {
+    throw new Error("useMessageContext must be used within a MessageProvider")
+  }
+  return context
 }
 
 export const MessageProvider = ({
@@ -60,24 +86,101 @@ export const MessageProvider = ({
   const [loadingMessages, setLoadingMessages] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [socket, setSocket] = useState<Socket | null>(null)
+  const [socketConnected, setSocketConnected] = useState<boolean>(false)
+  const [socketError, setSocketError] = useState<string | null>(null)
 
   // Connect to socket.io server with userId as query param
   useEffect(() => {
     if (!currentUser) return
     const userId = currentUser.id
-    const socket = io(process.env.NEXT_PUBLIC_API_URL ||"http://localhost:8080", {
-      transports: ["websocket"],
-      query: { userId },
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL
+
+    if (!apiUrl && process.env.NODE_ENV === "production") {
+      const msg =
+        "NEXT_PUBLIC_API_URL is not set. Socket will attempt localhost:8080, which will fail in production."
+
+      console.error(msg)
+      setSocketError(msg)
+
+      toast.error(
+        "Configuration error: backend URL is not set. Contact your administrator.",
+        {
+          id: "socket-config-error",
+          duration: Infinity,
+        },
+      )
+
+      return
+    }
+
+    const resolvedUrl = apiUrl || "http://localhost:8080"
+    const token = getToken()
+
+    const socket = io(resolvedUrl, {
+      transports: ["polling", "websocket"],
+      auth: { token },
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 2000,
     })
+    socket.on("connect", () => {
+      setSocketConnected(true)
+      setSocketError(null)
+
+      toast.success("Connected to chat server.", {
+        id: "socket-success",
+        duration: 2000,
+      })
+    })
+
+    socket.on("connect_error", (err) => {
+      const detail = err.message || String(err)
+      const description = (err as any).description
+        ? ` (${(err as any).description})`
+        : ""
+
+      console.error("WebSocket connection error:", detail + description, err)
+
+      setSocketConnected(false)
+      setSocketError(`Connection failed: ${detail}`)
+
+      toast.error(
+        `Chat server unreachable: ${detail}. Check NEXT_PUBLIC_API_URL or backend status.`,
+        {
+          id: "socket-error",
+          duration: 5000,
+        },
+      )
+    })
+
+    socket.on("disconnect", (reason) => {
+      console.warn("WebSocket disconnected:", reason)
+      setSocketConnected(false)
+    })
+
     setSocket(socket)
     return () => {
       socket.disconnect()
     }
   }, [currentUser])
 
+  // Sync socket with new tokens
+  useEffect(() => {
+    if (!socket) return
+    const handleTokenRefresh = (newToken: string) => {
+      socket.auth = { ...socket.auth, token: newToken }
+      if (socket.connected) {
+        socket.disconnect().connect()
+      }
+    }
+    addTokenRefreshListener(handleTokenRefresh)
+  }, [socket])
+
   // helper to update the online statuses
   const applyOnlineStatus = useCallback(
-    (usersList: User[], onlineIds: string[]) => { // CHANGED: Use User[] instead of any[]
+    (usersList: User[], onlineIds: string[]) => {
+      // CHANGED: Use User[] instead of any[]
       return usersList.map((user) => {
         const userId = (user._id || user.id)?.toString()
         const isOnline = onlineIds.some(
@@ -87,7 +190,7 @@ export const MessageProvider = ({
         return {
           ...user,
           status: isOnline ? "online" : "offline",
-        }
+        } as User
       })
     },
     [],
@@ -124,8 +227,9 @@ export const MessageProvider = ({
           setMessages(msgs)
           // Mark unseen messages as seen (for current user)
           let anySeen = false
-          msgs.forEach((msg: Message) => { // CHANGED: Use Message instead of any
-            if (!msg.seen && msg.receiverId === currentUser.id) {
+          msgs.forEach((msg: Message) => {
+            // CHANGED: Use Message instead of any
+            if (!msg.seen && msg.receiverId === currentUser?.id) {
               markAsSeen(msg._id)
               anySeen = true
             }
@@ -143,6 +247,23 @@ export const MessageProvider = ({
     [currentUser],
   )
 
+  // Fetch media messages for selected user
+  const fetchMediaMessages = useCallback(
+    async (userId: string, page = 1, limit = 20) => {
+      if (!userId) return
+      try {
+        const data = await api.get(
+          `/media/${userId}?page=${page}&limit=${limit}`,
+        )
+        return data
+      } catch (err: any) {
+        setError(err.message || "Failed to load media messages")
+        throw err
+      }
+    },
+    [],
+  )
+
   // Mark messages as seen (API: PUT /mark-as-seen/:messageId)
   const markAsSeen = useCallback(
     (messageId: string) => {
@@ -156,90 +277,170 @@ export const MessageProvider = ({
     [messages],
   )
 
-  // Listen for messageSeen socket event to update unseenMessages in real time
+  // Listen for messageSeen and messageDelivered socket events to update ticks in real time
   useEffect(() => {
     if (!socket) return
-    const handleMessageSeen = (data: { userId: string }) => {
+
+    const handleMessageSeen = (data: {
+      userId: string
+      messageId?: string
+    }) => {
       setUnseenMessages((prev) => ({ ...prev, [data.userId]: 0 }))
+      if (data.messageId) {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg._id === data.messageId
+              ? { ...msg, seen: true, delivered: true }
+              : msg,
+          ),
+        )
+      } else {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.receiverId === data.userId
+              ? { ...msg, seen: true, delivered: true }
+              : msg,
+          ),
+        )
+      }
     }
+
+    const handleMessageDelivered = ({ messageId }: { messageId: string }) => {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg._id === messageId ? { ...msg, delivered: true } : msg,
+        ),
+      )
+    }
+
     socket.on("messageSeen", handleMessageSeen)
+    socket.on("messageDelivered", handleMessageDelivered)
+
     return () => {
       socket.off("messageSeen", handleMessageSeen)
+      socket.off("messageDelivered", handleMessageDelivered)
     }
   }, [socket])
 
   // Send message (API: POST /send/:receiverId)
   const sendMessage = useCallback(
     async (receiverId: string, text: string, image?: string) => {
+      if (!currentUser) return
       try {
         const body: { text: string; image?: string } = { text } // CHANGED: Removed any type from body object
         if (image) body.image = image
         const res = await api.post(`/send/${receiverId}`, body)
 
         // Handle different possible response structures
-        let messageData
-        if (res.data) {
-          messageData = res.data
-        } else if (res.message) {
-          messageData = res
-        } else {
-          messageData = res
-        }
+        const newMessage = res.data
 
-        // Ensure the message has required fields
-        const newMessage = {
-          _id: messageData._id || Date.now().toString(),
-          text: messageData.text || text,
-          senderId: currentUser.id,
-          receiverId: receiverId,
-          timestamp: messageData.timestamp || new Date().toISOString(),
-          seen: messageData.seen || false,
-          ...(messageData.image && { image: messageData.image }),
-        }
+        setMessages((prev) => {
+          const exists = prev.some((msg) => msg._id === newMessage._id)
 
-        setMessages((msgs: Message[]) => [...msgs, newMessage]) // CHANGED: Use Message[] instead of any[]
+          if (exists) return prev
 
-        // Also emit via socket for real-time
-        if (socket) {
-          socket.emit("send-message", newMessage)
-        }
+          return [...prev, newMessage]
+        }) // CHANGED: Use Message[] instead of any[]
       } catch (err: any) {
         setError(err.message || "Failed to send message")
       }
     },
-    [currentUser, socket],
+    [currentUser],
   )
 
+  const editMessage = useCallback(async (messageId: string, text: string) => {
+    try {
+      const res = await api.put(`/edit/${messageId}`, { text })
+
+      const updatedMessage = res.data || res
+
+      setMessages((prev) =>
+        prev.map((msg) => (msg._id === messageId ? updatedMessage : msg)),
+      )
+    } catch (err: any) {
+      setError(err.message || "Failed to edit message")
+    }
+  }, [])
+
+  const deleteMessage = useCallback(async (messageId: string) => {
+    try {
+      const res = await api.delete(`/delete/${messageId}`)
+
+      const deletedMessage = res.data || res
+
+      setMessages((prev) =>
+        prev.map((msg) => (msg._id === messageId ? deletedMessage : msg)),
+      )
+    } catch (err: any) {
+      setError(err.message || "Failed to delete message")
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!socket) return
+
+    const handleMessageEdited = (updatedMessage: Message) => {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg._id === updatedMessage._id ? updatedMessage : msg,
+        ),
+      )
+    }
+
+    socket.on("messageEdited", handleMessageEdited)
+
+    return () => {
+      socket.off("messageEdited", handleMessageEdited)
+    }
+  }, [socket])
+
+  useEffect(() => {
+    if (!socket) return
+
+    const handleMessageDeleted = (deletedMessage: Message) => {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg._id === deletedMessage._id ? deletedMessage : msg,
+        ),
+      )
+    }
+
+    socket.on("messageDeleted", handleMessageDeleted)
+
+    return () => {
+      socket.off("messageDeleted", handleMessageDeleted)
+    }
+  }, [socket])
   // Listen for incoming messages
   useEffect(() => {
     if (!socket) return
-    const handleMessage = (msg: Message) => { // CHANGED: Use Message instead of any
-      // Check if message is for current chat
-      if (
-        selectedUser &&
-        (msg.senderId === selectedUser._id ||
-          msg.receiverId === selectedUser._id ||
-          msg.senderId === selectedUser.id ||
-          msg.receiverId === selectedUser.id)
-      ) {
-        setMessages((msgs: Message[]) => [...msgs, msg]) // CHANGED: Use Message[] instead of any[]
-      }
 
-      // Update unseen counts
+    const handleMessage = (msg: Message) => {
+      setMessages((prev) => {
+        const exists = prev.some((m) => m._id === msg._id)
+
+        if (exists) return prev
+
+        return [...prev, msg]
+      })
+
       fetchUsers()
     }
+
     socket.on("newMessage", handleMessage)
+
     return () => {
       socket.off("newMessage", handleMessage)
     }
-  }, [socket, selectedUser, fetchUsers])
+  }, [socket])
 
   // Listen for online users list and update user statuses
   useEffect(() => {
     if (!socket) return
     const handleGetOnlineUsers = (onlineUserIds: string[]) => {
       setOnlineUsers(onlineUserIds)
-      setUsers((prevUsers: User[]) => { // CHANGED: Use User[] instead of any[]
+      setUsers((prevUsers: User[]) => {
+        // CHANGED: Use User[] instead of any[]
         if (prevUsers.length === 0) {
           console.log("No users loaded yet")
           return prevUsers
@@ -280,6 +481,7 @@ export const MessageProvider = ({
         setSelectedUser,
         fetchUsers,
         fetchMessages,
+        fetchMediaMessages,
         markAsSeen,
         sendMessage,
         loadingUsers,
@@ -287,6 +489,10 @@ export const MessageProvider = ({
         error,
         setError,
         socket,
+        socketConnected,
+        socketError,
+        editMessage,
+        deleteMessage,
       }}
     >
       {children}

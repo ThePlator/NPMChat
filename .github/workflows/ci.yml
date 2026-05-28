@@ -1,0 +1,51 @@
+name: CI Pipeline
+
+on:
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [20.x]
+        
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: |
+            backend/package.json
+            frontend/package.json
+
+      - name: Install Backend Dependencies
+        working-directory: ./backend
+        run: npm install
+
+      - name: Run Backend Tests & Coverage
+        working-directory: ./backend
+        run: npm run test -- --coverage
+        
+      - name: Install Frontend Dependencies
+        working-directory: ./frontend
+        run: npm install
+
+      - name: Install Playwright Browsers
+        working-directory: ./frontend
+        run: npx playwright install --with-deps
+        
+      - name: Run Frontend E2E Tests
+        run: |
+          cd backend
+          echo "JWT_SECRET=github_actions_secret_123" > .env
+          npm run start &
+          sleep 5
+          cd ../frontend
+          npx playwright test
