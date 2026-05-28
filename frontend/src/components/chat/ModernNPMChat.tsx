@@ -4,13 +4,19 @@ import React, { useState, useEffect } from "react"
 import ChatSidebar from "./ChatSidebar"
 import ChatPanel from "./ChatPanel"
 import ProfileModal from "./ProfileModal"
-import { useAuth } from "../../app/AuthContext"
+import { useAuth, User } from "../../app/AuthContext"
 import { api } from "../../app/fetcher"
 import { io, Socket } from "socket.io-client"
 import { MessageProvider, useMessageContext } from "../../app/MessageContext"
 import { toast } from "sonner"
 
-const ChatPanels: React.FC<{ currentUser: any }> = ({ currentUser }) => {
+export interface UserProfileDraft {
+  name: string
+  bio: string
+  avatarUrl: string
+}
+
+const ChatPanels: React.FC<{ currentUser: User }> = ({ currentUser }) => {
   const {
     users,
     unseenMessages,
@@ -25,7 +31,8 @@ const ChatPanels: React.FC<{ currentUser: any }> = ({ currentUser }) => {
   } = useMessageContext()
   const [search, setSearch] = React.useState("")
   const [showProfile, setShowProfile] = React.useState(false)
-  const [profileDraft, setProfileDraft] = React.useState<any>(null)
+  const [profileDraft, setProfileDraft] =
+    React.useState<UserProfileDraft | null>(null)
   const [mobileView, setMobileView] = React.useState<"sidebar" | "chat">(
     "sidebar",
   )
