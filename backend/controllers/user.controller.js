@@ -387,6 +387,11 @@ export const forgotPassword = async (req, res) => {
     user.passwordResetUsedAt = null
     await user.save()
 
+    const isProd = process.env.NODE_ENV === "production"
+    if (!process.env.CLIENT_URL && isProd) {
+      console.error("CLIENT_URL must be set in production")
+      return res.status(500).json({ message: "Internal server error." })
+    }
     const baseUrl = process.env.CLIENT_URL || "http://localhost:3000"
     const resetUrl = `${baseUrl.replace(/\/$/, "")}/reset-password?token=${encodeURIComponent(rawToken)}`
     await sendPasswordResetEmail({ to: user.email, resetUrl })
@@ -444,7 +449,9 @@ export const updateProfile = async (req, res) => {
   try {
     const updateFields = { name, bio }
 
-    const nextAvatarUrl = (typeof avatarUrl === "string" ? avatarUrl : "").trim()
+    const nextAvatarUrl = (
+      typeof avatarUrl === "string" ? avatarUrl : ""
+    ).trim()
     const currentAvatarUrl = (req.user?.avatarUrl || "").trim()
 
     const shouldUploadNewAvatar =
