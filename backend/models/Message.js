@@ -40,6 +40,32 @@ const messageSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    conversationId: {
+      type: String,
+      index: true,
+    },
+    status: {
+      type: String,
+      enum: ["sending", "sent", "delivered", "read", "failed"],
+      default: "sent",
+    },
+    senderDeletedAt: {
+      type: Date,
+      default: null,
+    },
+    receiverDeletedAt: {
+      type: Date,
+      default: null,
+    },
+    sentAt: {
+      type: Date,
+    },
+    deliveredAt: {
+      type: Date,
+    },
+    readAt: {
+      type: Date,
+    },
   },
   { timestamps: true, optimisticConcurrency: true },
 )

@@ -19,6 +19,9 @@ const ChatPanels: React.FC<{ currentUser: any }> = ({ currentUser }) => {
     loadingUsers,
     loadingMessages,
     error,
+    socketConnected,
+    socketError,
+    isSyncing,
   } = useMessageContext()
   const [search, setSearch] = React.useState("")
   const [showProfile, setShowProfile] = React.useState(false)
@@ -119,6 +122,16 @@ const ChatPanels: React.FC<{ currentUser: any }> = ({ currentUser }) => {
         setProfileDraft={setProfileDraft}
         onSave={handleProfileSave}
       />
+      {!socketConnected && !socketError && (
+        <div className="absolute top-0 left-0 right-0 bg-yellow-500 text-black text-center py-1 text-sm font-medium z-50">
+          Reconnecting...
+        </div>
+      )}
+      {isSyncing && (
+        <div className="absolute top-6 left-0 right-0 bg-blue-500 text-white text-center py-1 text-sm font-medium z-50">
+          Syncing messages...
+        </div>
+      )}
       {error && (
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-red-500 text-white px-4 py-2 rounded-lg shadow">
           {error}

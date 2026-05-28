@@ -30,6 +30,17 @@ const userSchema = new mongoose.Schema(
       default: "",
     },
 
+    badges: [
+      {
+        type: String, // e.g. 'first-blood', 'speedrunner', 'polyglot'
+      },
+    ],
+
+    isWeeklySubscriber: {
+      type: Boolean,
+      default: true,
+    },
+
     refreshTokenHash: {
       type: String,
       default: null,
