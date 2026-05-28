@@ -1,10 +1,11 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
+const isProd = process.env.NODE_ENV === "production"
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL || (isProd ? "" : "http://localhost:8080")
 
-if (!process.env.NEXT_PUBLIC_API_URL && process.env.NODE_ENV === "production") {
-  console.error(
-    "[NPMChat] WARNING: NEXT_PUBLIC_API_URL is not set. " +
-      "All API calls will target http://localhost:8080, which will fail in production. " +
-      "Set NEXT_PUBLIC_API_URL to your backend URL.",
+if (!API_URL && isProd) {
+  throw new Error(
+    "[NPMChat] CRITICAL: NEXT_PUBLIC_API_URL is not set. " +
+      "Set NEXT_PUBLIC_API_URL to your backend URL in production.",
   )
 }
 
@@ -52,19 +53,23 @@ export function setOnlineStatus(online: boolean) {
 // Singleton promise for handling multiple concurrent refresh triggers
 let refreshPromise: Promise<string | null> | null = null
 
-function fetchWithTimeout(url: string, options: RequestInit, timeout: number): Promise<Response> {
+function fetchWithTimeout(
+  url: string,
+  options: RequestInit,
+  timeout: number,
+): Promise<Response> {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), timeout)
   const opts = { ...options, signal: controller.signal }
   return fetch(url, opts).finally(() => clearTimeout(timeoutId))
 }
 
-export async function fetcher(
+export async function fetcher<T = any>(
   path: string,
   options: RequestInit = {},
   base: "auth" | "messages" | "v1" = "messages",
   isRetry = false,
-): Promise<any> {
+): Promise<T> {
   const headers: any = {
     "Content-Type": "application/json",
     ...(options.headers || {}),
@@ -92,7 +97,11 @@ export async function fetcher(
     })
   }
 
-  const res = await fetchWithTimeout(`${BASES[base]}${path}`, fetchOptions, DEFAULT_TIMEOUT)
+  const res = await fetchWithTimeout(
+    `${BASES[base]}${path}`,
+    fetchOptions,
+    DEFAULT_TIMEOUT,
+  )
 
   let data
   try {
@@ -102,7 +111,12 @@ export async function fetcher(
   }
 
   if (!res.ok) {
-    if (res.status === 401 && data.code === "TOKEN_EXPIRED" && !isRetry && !(base === "auth" && path === "/refresh")) {
+    if (
+      res.status === 401 &&
+      data.code === "TOKEN_EXPIRED" &&
+      !isRetry &&
+      !(base === "auth" && path === "/refresh")
+    ) {
       if (!refreshPromise) {
         refreshPromise = (async () => {
           try {
@@ -144,12 +158,20 @@ export async function fetcher(
 }
 
 export const api = {
-  get: (path: string, base: "auth" | "messages" | "v1" = "messages") =>
-    fetcher(path, { method: "GET" }, base),
-  post: (path: string, body?: any, base: "auth" | "messages" | "v1" = "messages") =>
-    fetcher(path, { method: "POST", body: JSON.stringify(body) }, base),
-  put: (path: string, body?: any, base: "auth" | "messages" | "v1" = "messages") =>
-    fetcher(path, { method: "PUT", body: JSON.stringify(body) }, base),
-  delete: (path: string, base: "auth" | "messages" | "v1" = "messages") =>
-    fetcher(path, { method: "DELETE" }, base),
+  get: <T = any>(path: string, base: "auth" | "messages" | "v1" = "messages") =>
+    fetcher<T>(path, { method: "GET" }, base),
+  post: <T = any>(
+    path: string,
+    body?: any,
+    base: "auth" | "messages" | "v1" = "messages",
+  ) => fetcher<T>(path, { method: "POST", body: JSON.stringify(body) }, base),
+  put: <T = any>(
+    path: string,
+    body?: any,
+    base: "auth" | "messages" | "v1" = "messages",
+  ) => fetcher<T>(path, { method: "PUT", body: JSON.stringify(body) }, base),
+  delete: <T = any>(
+    path: string,
+    base: "auth" | "messages" | "v1" = "messages",
+  ) => fetcher<T>(path, { method: "DELETE" }, base),
 }
