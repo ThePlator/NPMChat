@@ -150,6 +150,16 @@ npm install</code></pre>
 
 ---
 
+## Deployment
+
+Deploy the frontend to Vercel and the Socket.IO backend to a persistent Node.js
+host such as Render, Railway, Fly.io, DigitalOcean, or Docker. Vercel Serverless
+Functions do not keep WebSocket connections open, so the backend should not be
+hosted there for production real-time chat.
+
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for the Render blueprint, Docker
+commands, health check endpoint, and frontend environment variables.
+
 
 ## Contributing
 

@@ -1,47 +1,34 @@
 import fs from "fs"
 
-/**
- * Robustly detects if the current environment is Vercel Serverless.
- * @returns {boolean}
- */
-export function isVercel() {
-  return (
-    process.env.VERCEL === "1" ||
-    process.env.NOW_REGION !== undefined
-  )
+export function isVercel(env = process.env) {
+  return env.VERCEL === "1" || env.VERCEL === "true" || env.NOW_REGION !== undefined
 }
 
-/**
- * Parses a port string/number safely, falling back to a default value.
- * @param {string|number} val 
- * @param {number} defaultPort 
- * @returns {number}
- */
-export function parsePort(val, defaultPort = 8080) {
-  const port = parseInt(val, 10)
-  if (isNaN(port) || port < 0 || port > 65535) {
-    return defaultPort
-  }
-  return port
+export const isVercelServerless = isVercel
+
+export function shouldStartHttpServer(env = process.env) {
+  return !isVercel(env)
 }
 
-/**
- * Detects the cloud platform NPMChat is currently running on.
- * @returns {string}
- */
-export function getPlatform() {
-  if (isVercel()) return "vercel"
-  if (process.env.RENDER === "true" || process.env.RENDER) return "render"
-  if (process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_STATIC_URL) return "railway"
-  if (process.env.FLY_APP_NAME) return "fly.io"
-  
-  // Detect Docker container
+export function parsePort(value, defaultPort = 8080) {
+  const port = Number.parseInt(value, 10)
+  return Number.isFinite(port) && port > 0 && port <= 65535 ? port : defaultPort
+}
+
+export function getRuntimePort(env = process.env) {
+  return parsePort(env.PORT, 8080)
+}
+
+export function getPlatform(env = process.env) {
+  if (isVercel(env)) return "vercel"
+  if (env.RENDER === "true" || env.RENDER) return "render"
+  if (env.RAILWAY_ENVIRONMENT || env.RAILWAY_STATIC_URL) return "railway"
+  if (env.FLY_APP_NAME) return "fly.io"
+
   try {
-    if (fs.existsSync("/.dockerenv")) {
-      return "docker"
-    }
-  } catch (e) {
-    // Ignore fs errors
+    if (fs.existsSync("/.dockerenv")) return "docker"
+  } catch {
+    // Ignore filesystem probe failures and fall back to local runtime.
   }
 
   return "local"
