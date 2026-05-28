@@ -478,7 +478,7 @@ export default function ChatPanel({
               />
             </div>
           )}
-          <FileUpload roomId={selectedUser._id || selectedUser.id} />
+          <FileUpload roomId={selectedUser?._id || selectedUser?.id || ""} />
           {image && (
             <div className="relative flex items-center">
               <img
