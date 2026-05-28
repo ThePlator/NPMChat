@@ -197,7 +197,7 @@ test.describe("Message Flow", () => {
       page.waitForResponse(
         (response) =>
           response.url().includes("api/v1/messages") &&
-          !response.url().includes("friend-id") &&
+          !response.url().includes(friendId) &&
           response.request().method() === "GET" &&
           response.status() === 200,
         { timeout: 15000 }
@@ -210,9 +210,6 @@ test.describe("Message Flow", () => {
       timeout: 10000,
     })
 
-    // The app auto-selects the first user; wait for the conversation fetch to complete
-    await historyResponsePromise
-
     // Verify chat history loaded
     await expect(page.getByText("Hi there")).toBeVisible({ timeout: 10000 })
 
@@ -224,7 +221,7 @@ test.describe("Message Flow", () => {
     const [sendResponse] = await Promise.all([
       page.waitForResponse(
         (response) =>
-          response.url().includes("api/v1/messages/send/friend-id") &&
+          response.url().includes(`api/v1/messages/send/${friendId}`) &&
           response.request().method() === "POST" &&
           response.status() === 201,
         { timeout: 10000 }
