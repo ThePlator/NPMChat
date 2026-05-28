@@ -6,7 +6,12 @@ import React, {
   useCallback,
   useRef,
 } from "react"
-import { api, getToken, addTokenRefreshListener, setOnlineStatus } from "./fetcher"
+import {
+  api,
+  getToken,
+  addTokenRefreshListener,
+  setOnlineStatus,
+} from "./fetcher"
 import { io, Socket } from "socket.io-client"
 import { User, addSessionRestoreListener } from "./AuthContext"
 import { toast } from "sonner"
@@ -85,7 +90,9 @@ export const MessageProvider = ({
 }) => {
   const [users, setUsers] = useState<User[]>([])
   const [onlineUsers, setOnlineUsers] = useState<string[]>([])
-  const [unseenMessages, setUnseenMessages] = useState<Record<string, number>>({})
+  const [unseenMessages, setUnseenMessages] = useState<Record<string, number>>(
+    {},
+  )
   const [messages, setMessages] = useState<Message[]>([])
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [loadingUsers, setLoadingUsers] = useState(false)
@@ -104,17 +111,23 @@ export const MessageProvider = ({
     const apiUrl = process.env.NEXT_PUBLIC_API_URL
 
     if (!apiUrl && process.env.NODE_ENV === "production") {
-      const msg = "NEXT_PUBLIC_API_URL is not set. Socket will attempt localhost:8080, which will fail in production."
+      const msg =
+        "NEXT_PUBLIC_API_URL is not set. Socket will attempt localhost:8080, which will fail in production."
       console.error(msg)
       setSocketError(msg)
-      toast.error("Configuration error: backend URL is not set. Contact your administrator.", {
-        id: "socket-config-error",
-        duration: Infinity,
-      })
+      toast.error(
+        "Configuration error: backend URL is not set. Contact your administrator.",
+        {
+          id: "socket-config-error",
+          duration: Infinity,
+        },
+      )
       return
     }
 
-    const resolvedUrl = apiUrl || "http://localhost:8080"
+    const resolvedUrl =
+      apiUrl ||
+      (process.env.NODE_ENV === "production" ? "" : "http://localhost:8080")
     const token = getToken()
 
     const socket = io(resolvedUrl, {
@@ -266,8 +279,7 @@ export const MessageProvider = ({
         .then((msgs) => {
           setMessages(msgs)
           const anyUnseen = msgs.some(
-            (msg: Message) =>
-              !msg.seen && msg.receiverId === currentUser?.id,
+            (msg: Message) => !msg.seen && msg.receiverId === currentUser?.id,
           )
           if (anyUnseen) {
             setUnseenMessages((prev) => ({ ...prev, [userId]: 0 }))
@@ -285,7 +297,9 @@ export const MessageProvider = ({
     async (userId: string, page = 1, limit = 20) => {
       if (!userId) return
       try {
-        const data = await api.get(`/media/${userId}?page=${page}&limit=${limit}`)
+        const data = await api.get(
+          `/media/${userId}?page=${page}&limit=${limit}`,
+        )
         return data
       } catch (err: any) {
         setError(err.message || "Failed to load media messages")
@@ -324,7 +338,10 @@ export const MessageProvider = ({
   useEffect(() => {
     if (!socket) return
 
-    const handleMessageSeen = (data: { userId: string; messageId?: string }) => {
+    const handleMessageSeen = (data: {
+      userId: string
+      messageId?: string
+    }) => {
       setUnseenMessages((prev) => ({ ...prev, [data.userId]: 0 }))
       if (data.messageId) {
         setMessages((prev) =>
@@ -345,11 +362,20 @@ export const MessageProvider = ({
       }
     }
 
-    const handleMessageDelivered = (data: { messageId: string; status?: string; deliveredAt?: string }) => {
+    const handleMessageDelivered = (data: {
+      messageId: string
+      status?: string
+      deliveredAt?: string
+    }) => {
       setMessages((prev) =>
         prev.map((msg) =>
           msg._id === data.messageId
-            ? { ...msg, delivered: true, status: (data.status as Message["status"]) || "delivered", deliveredAt: data.deliveredAt }
+            ? {
+                ...msg,
+                delivered: true,
+                status: (data.status as Message["status"]) || "delivered",
+                deliveredAt: data.deliveredAt,
+              }
             : msg,
         ),
       )
@@ -387,7 +413,10 @@ export const MessageProvider = ({
       setMessages((prev) => [...prev, optimisticMessage])
 
       try {
-        const body: { text: string; image?: string; clientId: string } = { text, clientId }
+        const body: { text: string; image?: string; clientId: string } = {
+          text,
+          clientId,
+        }
         if (image) body.image = image
         const res = await api.post(`/send/${receiverId}`, body)
         const newMessage = res.data
@@ -412,45 +441,45 @@ export const MessageProvider = ({
   )
 
   // Retry a failed message
-  const retrySendMessage = useCallback(
-    async (failedMessage: Message) => {
+  const retrySendMessage = useCallback(async (failedMessage: Message) => {
+    setMessages((prev) =>
+      prev.map((msg) =>
+        msg._id === failedMessage._id
+          ? { ...msg, status: "sending" as const }
+          : msg,
+      ),
+    )
+
+    try {
+      const body: { text: string; image?: string; clientId: string } = {
+        text: failedMessage.text || "",
+        clientId: failedMessage.clientId || failedMessage._id,
+      }
+      if (failedMessage.image) body.image = failedMessage.image
+      const res = await api.post(`/send/${failedMessage.receiverId}`, body)
+      const newMessage = res.data
+
       setMessages((prev) =>
         prev.map((msg) =>
           msg._id === failedMessage._id
-            ? { ...msg, status: "sending" as const }
+            ? {
+                ...newMessage,
+                clientId: failedMessage.clientId || failedMessage._id,
+              }
             : msg,
         ),
       )
-
-      try {
-        const body: { text: string; image?: string; clientId: string } = {
-          text: failedMessage.text || "",
-          clientId: failedMessage.clientId || failedMessage._id,
-        }
-        if (failedMessage.image) body.image = failedMessage.image
-        const res = await api.post(`/send/${failedMessage.receiverId}`, body)
-        const newMessage = res.data
-
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg._id === failedMessage._id
-              ? { ...newMessage, clientId: failedMessage.clientId || failedMessage._id }
-              : msg,
-          ),
-        )
-      } catch (err: any) {
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg._id === failedMessage._id
-              ? { ...msg, status: "failed" as const }
-              : msg,
-          ),
-        )
-        setError(err.message || "Retry failed")
-      }
-    },
-    [],
-  )
+    } catch (err: any) {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg._id === failedMessage._id
+            ? { ...msg, status: "failed" as const }
+            : msg,
+        ),
+      )
+      setError(err.message || "Retry failed")
+    }
+  }, [])
 
   const editMessage = useCallback(async (messageId: string, text: string) => {
     try {
@@ -488,7 +517,9 @@ export const MessageProvider = ({
     }
 
     socket.on("messageEdited", handleMessageEdited)
-    return () => { socket.off("messageEdited", handleMessageEdited) }
+    return () => {
+      socket.off("messageEdited", handleMessageEdited)
+    }
   }, [socket])
 
   useEffect(() => {
@@ -503,7 +534,9 @@ export const MessageProvider = ({
     }
 
     socket.on("messageDeleted", handleMessageDeleted)
-    return () => { socket.off("messageDeleted", handleMessageDeleted) }
+    return () => {
+      socket.off("messageDeleted", handleMessageDeleted)
+    }
   }, [socket])
 
   // Listen for incoming messages
@@ -513,7 +546,9 @@ export const MessageProvider = ({
     const handleMessage = (msg: Message) => {
       setMessages((prev) => {
         const exists = prev.some(
-          (m) => m._id === msg._id || (m.clientId && msg.clientId && m.clientId === msg.clientId),
+          (m) =>
+            m._id === msg._id ||
+            (m.clientId && msg.clientId && m.clientId === msg.clientId),
         )
         if (exists) return prev
         return [...prev, msg]
@@ -522,7 +557,9 @@ export const MessageProvider = ({
     }
 
     socket.on("newMessage", handleMessage)
-    return () => { socket.off("newMessage", handleMessage) }
+    return () => {
+      socket.off("newMessage", handleMessage)
+    }
   }, [socket])
 
   // Listen for online users
@@ -536,7 +573,9 @@ export const MessageProvider = ({
       })
     }
     socket.on("getOnlineUsers", handleGetOnlineUsers)
-    return () => { socket.off("getOnlineUsers", handleGetOnlineUsers) }
+    return () => {
+      socket.off("getOnlineUsers", handleGetOnlineUsers)
+    }
   }, [socket, applyOnlineStatus])
 
   // Auto-select first user
