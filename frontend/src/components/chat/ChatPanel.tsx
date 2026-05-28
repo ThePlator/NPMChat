@@ -8,7 +8,7 @@ import { TypingIndicator } from "./TypingIndicator"
 
 import EmojiPicker from "emoji-picker-react"
 import { ModeToggle } from "../ui/mode-toggle"
-import { Check, CheckCheck, Image as ImageIcon } from "lucide-react"
+import { Check, CheckCheck, Loader, AlertCircle, Image as ImageIcon, RefreshCw } from "lucide-react"
 import { SettingsDrawer } from "../ui/settings-drawer"
 import MediaGallery from "./MediaGallery"
 import { FileUpload } from "./FileUpload"
@@ -16,15 +16,25 @@ import { FileUpload } from "./FileUpload"
 function MessageTick({
   seen,
   delivered,
+  status,
 }: {
   seen?: boolean
   delivered?: boolean
+  status?: string
 }) {
-  if (seen) {
-    return <CheckCheck size={14} className="text-blue-500" aria-label="Seen" />
+  if (status === "sending") {
+    return <Loader size={14} className="text-gray-400 animate-spin" aria-label="Sending" />
   }
 
-  if (delivered) {
+  if (status === "failed") {
+    return <AlertCircle size={14} className="text-red-500" aria-label="Failed" />
+  }
+
+  if (seen || status === "read") {
+    return <CheckCheck size={14} className="text-blue-500" aria-label="Read" />
+  }
+
+  if (delivered || status === "delivered") {
     return (
       <CheckCheck size={14} className="text-gray-400" aria-label="Delivered" />
     )
@@ -43,12 +53,14 @@ export default function ChatPanel({
   const {
     messages,
     sendMessage,
-    markAsSeen,
+    retrySendMessage,
+    markAllAsSeen,
     loadingMessages,
     error,
     selectedUser: contextSelectedUser,
     editMessage,
     deleteMessage,
+    isSyncing,
   } = useMessageContext()
 
   const { user } = useAuth()
@@ -78,14 +90,15 @@ export default function ChatPanel({
   }, [messages, selectedUser])
 
   useEffect(() => {
-    // Mark unseen messages as seen when displayed
-    messages.forEach((msg: any) => {
-      if (!msg.seen && msg.receiverId === currentUserId) {
-        markAsSeen(msg._id)
-      }
-    })
-    // eslint-disable-next-line
-  }, [messages, selectedUser])
+    if (!selectedUser || !currentUserId) return
+    const senderId = selectedUser._id || selectedUser.id
+    const hasUnseen = messages.some(
+      (msg) => !msg.seen && msg.receiverId === currentUserId,
+    )
+    if (hasUnseen) {
+      markAllAsSeen(senderId)
+    }
+  }, [messages, selectedUser, currentUserId, markAllAsSeen])
 
   async function handleSend() {
     if ((input.trim() === "" && !image) || !selectedUser) return
@@ -322,6 +335,12 @@ export default function ChatPanel({
         isOpen={showSettings}
         onClose={() => setShowSettings(false)}
       />
+      {isSyncing && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 text-sm font-medium">
+          <Loader size={14} className="animate-spin" />
+          Syncing messages...
+        </div>
+      )}
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-[#f3e8ff] dark:bg-accent">
         {messages.map((msg: any, i: number) => {
@@ -436,10 +455,20 @@ export default function ChatPanel({
                 )}
                 <span className="flex items-center gap-1 text-xs text-gray-500 mt-1 self-end pr-3 pb-1">
                   {time}
+                  {msg.status === "failed" && (
+                    <button
+                      onClick={() => retrySendMessage(msg)}
+                      className="text-red-500 hover:text-red-700 ml-1"
+                      title="Retry"
+                    >
+                      <RefreshCw size={14} />
+                    </button>
+                  )}
                   {isMe && (
                     <MessageTick
                       seen={msg.seen}
                       delivered={msg.delivered ?? false}
+                      status={msg.status}
                     />
                   )}
                 </span>

@@ -4,15 +4,17 @@ import React, {
   useState,
   useEffect,
   useCallback,
+  useRef,
 } from "react"
-import { api, getToken, addTokenRefreshListener } from "./fetcher"
+import { api, getToken, addTokenRefreshListener, setOnlineStatus } from "./fetcher"
 import { io, Socket } from "socket.io-client"
-import { User } from "./AuthContext" // CHANGED: imported User interface
-import { toast } from "sonner" // ADDED: sonner for notifications
+import { User, addSessionRestoreListener } from "./AuthContext"
+import { toast } from "sonner"
+import { generateClientId } from "../lib/utils"
 
 export interface Message {
-  // CHANGED: Added Message interface
   _id: string
+  clientId?: string
   text?: string
   senderId: string
   receiverId: string
@@ -25,10 +27,13 @@ export interface Message {
   deleted?: boolean
   editedAt?: string
   deletedAt?: string
+  status?: "sending" | "sent" | "delivered" | "read" | "failed"
+  sentAt?: string
+  deliveredAt?: string
+  readAt?: string
 }
 
 export interface MessageContextType {
-  // CHANGED: Added MessageContextType
   users: User[]
   unseenMessages: Record<string, number>
   messages: Message[]
@@ -42,11 +47,13 @@ export interface MessageContextType {
     limit?: number,
   ) => Promise<any>
   markAsSeen: (messageId: string) => Promise<any>
+  markAllAsSeen: (senderId: string) => Promise<any>
   sendMessage: (
     receiverId: string,
     text: string,
     image?: string,
   ) => Promise<void>
+  retrySendMessage: (message: Message) => Promise<void>
   loadingUsers: boolean
   loadingMessages: boolean
   error: string | null
@@ -56,9 +63,10 @@ export interface MessageContextType {
   deleteMessage: (messageId: string) => Promise<void>
   socketConnected: boolean
   socketError: string | null
+  isSyncing: boolean
 }
 
-const MessageContext = createContext<MessageContextType | null>(null) // CHANGED: Use MessageContextType instead of any
+const MessageContext = createContext<MessageContextType | null>(null)
 
 export function useMessageContext() {
   const context = useContext(MessageContext)
@@ -73,44 +81,36 @@ export const MessageProvider = ({
   currentUser,
 }: {
   children: React.ReactNode
-  currentUser: User | null // CHANGED: Use User type instead of any
+  currentUser: User | null
 }) => {
-  const [users, setUsers] = useState<User[]>([]) // CHANGED: Use User[] instead of any[]
+  const [users, setUsers] = useState<User[]>([])
   const [onlineUsers, setOnlineUsers] = useState<string[]>([])
-  const [unseenMessages, setUnseenMessages] = useState<Record<string, number>>(
-    {},
-  )
-  const [messages, setMessages] = useState<Message[]>([]) // CHANGED: Use Message[] instead of any[]
-  const [selectedUser, setSelectedUser] = useState<User | null>(null) // CHANGED: Use User instead of any
+  const [unseenMessages, setUnseenMessages] = useState<Record<string, number>>({})
+  const [messages, setMessages] = useState<Message[]>([])
+  const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [loadingUsers, setLoadingUsers] = useState(false)
   const [loadingMessages, setLoadingMessages] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [socket, setSocket] = useState<Socket | null>(null)
   const [socketConnected, setSocketConnected] = useState<boolean>(false)
   const [socketError, setSocketError] = useState<string | null>(null)
+  const [isSyncing, setIsSyncing] = useState(false)
+  const seenBatchRef = useRef<Map<string, number>>(new Map())
+  const seenTimerRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Connect to socket.io server with userId as query param
+  // Connect to socket.io server
   useEffect(() => {
     if (!currentUser) return
-    const userId = currentUser.id
-
     const apiUrl = process.env.NEXT_PUBLIC_API_URL
 
     if (!apiUrl && process.env.NODE_ENV === "production") {
-      const msg =
-        "NEXT_PUBLIC_API_URL is not set. Socket will attempt localhost:8080, which will fail in production."
-
+      const msg = "NEXT_PUBLIC_API_URL is not set. Socket will attempt localhost:8080, which will fail in production."
       console.error(msg)
       setSocketError(msg)
-
-      toast.error(
-        "Configuration error: backend URL is not set. Contact your administrator.",
-        {
-          id: "socket-config-error",
-          duration: Infinity,
-        },
-      )
-
+      toast.error("Configuration error: backend URL is not set. Contact your administrator.", {
+        id: "socket-config-error",
+        duration: Infinity,
+      })
       return
     }
 
@@ -124,10 +124,11 @@ export const MessageProvider = ({
       reconnectionAttempts: 5,
       reconnectionDelay: 2000,
     })
+
     socket.on("connect", () => {
       setSocketConnected(true)
       setSocketError(null)
-
+      setOnlineStatus(true)
       toast.success("Connected to chat server.", {
         id: "socket-success",
         duration: 2000,
@@ -136,32 +137,76 @@ export const MessageProvider = ({
 
     socket.on("connect_error", (err) => {
       const detail = err.message || String(err)
-      const description = (err as any).description
-        ? ` (${(err as any).description})`
-        : ""
-
-      console.error("WebSocket connection error:", detail + description, err)
-
+      console.error("WebSocket connection error:", detail, err)
       setSocketConnected(false)
       setSocketError(`Connection failed: ${detail}`)
-
-      toast.error(
-        `Chat server unreachable: ${detail}. Check NEXT_PUBLIC_API_URL or backend status.`,
-        {
-          id: "socket-error",
-          duration: 5000,
-        },
-      )
+      setOnlineStatus(false)
+      toast.error(`Chat server unreachable: ${detail}.`, {
+        id: "socket-error",
+        duration: 5000,
+      })
     })
 
     socket.on("disconnect", (reason) => {
       console.warn("WebSocket disconnected:", reason)
       setSocketConnected(false)
+      setOnlineStatus(false)
+    })
+
+    socket.on("connect", async () => {
+      setIsSyncing(true)
+      try {
+        const msgs = await api.get("/sync")
+        if (msgs?.length) {
+          setMessages((prev) => {
+            const existingIds = new Set(prev.map((m) => m._id))
+            const existingClientIds = new Set(prev.map((m) => m.clientId))
+            const newMsgs = msgs.filter(
+              (m: Message) =>
+                !existingIds.has(m._id) &&
+                !(m.clientId && existingClientIds.has(m.clientId)),
+            )
+            return [...prev, ...newMsgs]
+          })
+          fetchUsers()
+        }
+      } catch {
+        // silent — sync is best-effort
+      } finally {
+        setIsSyncing(false)
+      }
     })
 
     setSocket(socket)
+
+    // Trigger sync on mount — covers the case where session restore listeners
+    // fired before this effect's listener was registered (e.g. in tests where
+    // mocked API calls resolve synchronously).
+    const doSync = async () => {
+      setIsSyncing(true)
+      try {
+        const msgs = await api.get("/sync")
+        if (msgs?.length) {
+          setMessages((prev) => {
+            const existingIds = new Set(prev.map((m) => m._id))
+            const newMsgs = msgs.filter((m: Message) => !existingIds.has(m._id))
+            return [...prev, ...newMsgs]
+          })
+          fetchUsers()
+        }
+      } catch {
+        // silent
+      } finally {
+        setIsSyncing(false)
+      }
+    }
+    doSync()
+
+    const unsubSession = addSessionRestoreListener(doSync)
+
     return () => {
       socket.disconnect()
+      unsubSession()
     }
   }, [currentUser])
 
@@ -177,16 +222,13 @@ export const MessageProvider = ({
     addTokenRefreshListener(handleTokenRefresh)
   }, [socket])
 
-  // helper to update the online statuses
   const applyOnlineStatus = useCallback(
     (usersList: User[], onlineIds: string[]) => {
-      // CHANGED: Use User[] instead of any[]
       return usersList.map((user) => {
         const userId = (user._id || user.id)?.toString()
         const isOnline = onlineIds.some(
           (onlineId) => onlineId.toString() === userId,
         )
-
         return {
           ...user,
           status: isOnline ? "online" : "offline",
@@ -196,14 +238,12 @@ export const MessageProvider = ({
     [],
   )
 
-  // Fetch users for sidebar
   const fetchUsers = useCallback(() => {
     if (!currentUser) return
     setLoadingUsers(true)
     api
       .get("/")
       .then((data) => {
-        // API returns { users: [...], unseenMessages: { ... } }
         const usersWithStatus = applyOnlineStatus(data.users, onlineUsers)
         setUsers(usersWithStatus)
         setUnseenMessages(data.unseenMessages || {})
@@ -216,7 +256,7 @@ export const MessageProvider = ({
     fetchUsers()
   }, [fetchUsers])
 
-  // Fetch messages for selected user (marks unseen as seen)
+  // Fetch messages for selected user
   const fetchMessages = useCallback(
     (userId: string) => {
       if (!userId) return
@@ -225,17 +265,11 @@ export const MessageProvider = ({
         .get(`/${userId}`)
         .then((msgs) => {
           setMessages(msgs)
-          // Mark unseen messages as seen (for current user)
-          let anySeen = false
-          msgs.forEach((msg: Message) => {
-            // CHANGED: Use Message instead of any
-            if (!msg.seen && msg.receiverId === currentUser?.id) {
-              markAsSeen(msg._id)
-              anySeen = true
-            }
-          })
-          // If any messages were seen, update unseenMessages for this user
-          if (anySeen) {
+          const anyUnseen = msgs.some(
+            (msg: Message) =>
+              !msg.seen && msg.receiverId === currentUser?.id,
+          )
+          if (anyUnseen) {
             setUnseenMessages((prev) => ({ ...prev, [userId]: 0 }))
           }
         })
@@ -247,14 +281,11 @@ export const MessageProvider = ({
     [currentUser],
   )
 
-  // Fetch media messages for selected user
   const fetchMediaMessages = useCallback(
     async (userId: string, page = 1, limit = 20) => {
       if (!userId) return
       try {
-        const data = await api.get(
-          `/media/${userId}?page=${page}&limit=${limit}`,
-        )
+        const data = await api.get(`/media/${userId}?page=${page}&limit=${limit}`)
         return data
       } catch (err: any) {
         setError(err.message || "Failed to load media messages")
@@ -264,11 +295,23 @@ export const MessageProvider = ({
     [],
   )
 
-  // Mark messages as seen (API: PUT /mark-as-seen/:messageId)
+  // Debounced batch seen-marking using conversation-level endpoint
+  const markAllAsSeen = useCallback((senderId: string) => {
+    seenBatchRef.current.set(senderId, Date.now())
+    if (seenTimerRef.current) clearTimeout(seenTimerRef.current)
+    seenTimerRef.current = setTimeout(() => {
+      const entries = Array.from(seenBatchRef.current.entries())
+      seenBatchRef.current.clear()
+      entries.forEach(([sid]) => {
+        setUnseenMessages((prev) => ({ ...prev, [sid]: 0 }))
+        api.put(`/mark-conversation-seen/${sid}`).catch(() => {})
+      })
+    }, 300)
+  }, [])
+
   const markAsSeen = useCallback(
     (messageId: string) => {
-      // Find the userId for this message
-      const msg = messages.find((m: Message) => m._id === messageId) // CHANGED: Use Message instead of any
+      const msg = messages.find((m: Message) => m._id === messageId)
       if (msg) {
         setUnseenMessages((prev) => ({ ...prev, [msg.senderId]: 0 }))
       }
@@ -277,20 +320,17 @@ export const MessageProvider = ({
     [messages],
   )
 
-  // Listen for messageSeen and messageDelivered socket events to update ticks in real time
+  // Listen for socket events
   useEffect(() => {
     if (!socket) return
 
-    const handleMessageSeen = (data: {
-      userId: string
-      messageId?: string
-    }) => {
+    const handleMessageSeen = (data: { userId: string; messageId?: string }) => {
       setUnseenMessages((prev) => ({ ...prev, [data.userId]: 0 }))
       if (data.messageId) {
         setMessages((prev) =>
           prev.map((msg) =>
             msg._id === data.messageId
-              ? { ...msg, seen: true, delivered: true }
+              ? { ...msg, seen: true, delivered: true, status: "read" as const }
               : msg,
           ),
         )
@@ -298,17 +338,19 @@ export const MessageProvider = ({
         setMessages((prev) =>
           prev.map((msg) =>
             msg.receiverId === data.userId
-              ? { ...msg, seen: true, delivered: true }
+              ? { ...msg, seen: true, delivered: true, status: "read" as const }
               : msg,
           ),
         )
       }
     }
 
-    const handleMessageDelivered = ({ messageId }: { messageId: string }) => {
+    const handleMessageDelivered = (data: { messageId: string; status?: string; deliveredAt?: string }) => {
       setMessages((prev) =>
         prev.map((msg) =>
-          msg._id === messageId ? { ...msg, delivered: true } : msg,
+          msg._id === data.messageId
+            ? { ...msg, delivered: true, status: (data.status as Message["status"]) || "delivered", deliveredAt: data.deliveredAt }
+            : msg,
         ),
       )
     }
@@ -322,38 +364,98 @@ export const MessageProvider = ({
     }
   }, [socket])
 
-  // Send message (API: POST /send/:receiverId)
+  // Send message with optimistic update, rollback, and retry
   const sendMessage = useCallback(
     async (receiverId: string, text: string, image?: string) => {
       if (!currentUser) return
+
+      const clientId = generateClientId()
+      const optimisticMessage: Message = {
+        _id: clientId,
+        clientId,
+        senderId: currentUser.id,
+        receiverId,
+        text,
+        image: image || undefined,
+        seen: false,
+        delivered: false,
+        status: "sending",
+        timestamp: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+      }
+
+      setMessages((prev) => [...prev, optimisticMessage])
+
       try {
-        const body: { text: string; image?: string } = { text } // CHANGED: Removed any type from body object
+        const body: { text: string; image?: string; clientId: string } = { text, clientId }
         if (image) body.image = image
         const res = await api.post(`/send/${receiverId}`, body)
-
-        // Handle different possible response structures
         const newMessage = res.data
 
-        setMessages((prev) => {
-          const exists = prev.some((msg) => msg._id === newMessage._id)
-
-          if (exists) return prev
-
-          return [...prev, newMessage]
-        }) // CHANGED: Use Message[] instead of any[]
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.clientId === clientId ? { ...newMessage, clientId } : msg,
+          ),
+        )
       } catch (err: any) {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.clientId === clientId
+              ? { ...msg, status: "failed" as const }
+              : msg,
+          ),
+        )
         setError(err.message || "Failed to send message")
       }
     },
     [currentUser],
   )
 
+  // Retry a failed message
+  const retrySendMessage = useCallback(
+    async (failedMessage: Message) => {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg._id === failedMessage._id
+            ? { ...msg, status: "sending" as const }
+            : msg,
+        ),
+      )
+
+      try {
+        const body: { text: string; image?: string; clientId: string } = {
+          text: failedMessage.text || "",
+          clientId: failedMessage.clientId || failedMessage._id,
+        }
+        if (failedMessage.image) body.image = failedMessage.image
+        const res = await api.post(`/send/${failedMessage.receiverId}`, body)
+        const newMessage = res.data
+
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg._id === failedMessage._id
+              ? { ...newMessage, clientId: failedMessage.clientId || failedMessage._id }
+              : msg,
+          ),
+        )
+      } catch (err: any) {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg._id === failedMessage._id
+              ? { ...msg, status: "failed" as const }
+              : msg,
+          ),
+        )
+        setError(err.message || "Retry failed")
+      }
+    },
+    [],
+  )
+
   const editMessage = useCallback(async (messageId: string, text: string) => {
     try {
       const res = await api.put(`/edit/${messageId}`, { text })
-
       const updatedMessage = res.data || res
-
       setMessages((prev) =>
         prev.map((msg) => (msg._id === messageId ? updatedMessage : msg)),
       )
@@ -365,9 +467,7 @@ export const MessageProvider = ({
   const deleteMessage = useCallback(async (messageId: string) => {
     try {
       const res = await api.delete(`/delete/${messageId}`)
-
       const deletedMessage = res.data || res
-
       setMessages((prev) =>
         prev.map((msg) => (msg._id === messageId ? deletedMessage : msg)),
       )
@@ -388,10 +488,7 @@ export const MessageProvider = ({
     }
 
     socket.on("messageEdited", handleMessageEdited)
-
-    return () => {
-      socket.off("messageEdited", handleMessageEdited)
-    }
+    return () => { socket.off("messageEdited", handleMessageEdited) }
   }, [socket])
 
   useEffect(() => {
@@ -406,68 +503,54 @@ export const MessageProvider = ({
     }
 
     socket.on("messageDeleted", handleMessageDeleted)
-
-    return () => {
-      socket.off("messageDeleted", handleMessageDeleted)
-    }
+    return () => { socket.off("messageDeleted", handleMessageDeleted) }
   }, [socket])
+
   // Listen for incoming messages
   useEffect(() => {
     if (!socket) return
 
     const handleMessage = (msg: Message) => {
       setMessages((prev) => {
-        const exists = prev.some((m) => m._id === msg._id)
-
+        const exists = prev.some(
+          (m) => m._id === msg._id || (m.clientId && msg.clientId && m.clientId === msg.clientId),
+        )
         if (exists) return prev
-
         return [...prev, msg]
       })
-
       fetchUsers()
     }
 
     socket.on("newMessage", handleMessage)
-
-    return () => {
-      socket.off("newMessage", handleMessage)
-    }
+    return () => { socket.off("newMessage", handleMessage) }
   }, [socket])
 
-  // Listen for online users list and update user statuses
+  // Listen for online users
   useEffect(() => {
     if (!socket) return
     const handleGetOnlineUsers = (onlineUserIds: string[]) => {
       setOnlineUsers(onlineUserIds)
       setUsers((prevUsers: User[]) => {
-        // CHANGED: Use User[] instead of any[]
-        if (prevUsers.length === 0) {
-          console.log("No users loaded yet")
-          return prevUsers
-        }
+        if (prevUsers.length === 0) return prevUsers
         return applyOnlineStatus(prevUsers, onlineUserIds)
       })
     }
     socket.on("getOnlineUsers", handleGetOnlineUsers)
-    return () => {
-      socket.off("getOnlineUsers", handleGetOnlineUsers)
-    }
+    return () => { socket.off("getOnlineUsers", handleGetOnlineUsers) }
   }, [socket, applyOnlineStatus])
 
-  // Automatically select the first user if none is selected and users are loaded
+  // Auto-select first user
   useEffect(() => {
     if (!selectedUser && users.length > 0) {
       setSelectedUser(users[0])
     }
   }, [users, selectedUser])
 
-  // Fetch messages when selectedUser changes
+  // Fetch messages on user select
   useEffect(() => {
     if (selectedUser) {
       const userId = selectedUser._id || selectedUser.id
-      if (userId) {
-        fetchMessages(userId)
-      }
+      if (userId) fetchMessages(userId)
     }
   }, [selectedUser, fetchMessages])
 
@@ -483,7 +566,9 @@ export const MessageProvider = ({
         fetchMessages,
         fetchMediaMessages,
         markAsSeen,
+        markAllAsSeen,
         sendMessage,
+        retrySendMessage,
         loadingUsers,
         loadingMessages,
         error,
@@ -493,6 +578,7 @@ export const MessageProvider = ({
         socketError,
         editMessage,
         deleteMessage,
+        isSyncing,
       }}
     >
       {children}

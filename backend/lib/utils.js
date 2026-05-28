@@ -20,3 +20,7 @@ export function generateRefreshTokenId() {
 }
 
 export const generateToken = generateAccessToken
+
+export function generateClientId() {
+  return crypto.randomUUID()
+}

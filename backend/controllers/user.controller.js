@@ -485,6 +485,17 @@ export const sendOTP = async (req, res) => {
       return res.status(400).json({ message: "Email is required." })
     }
 
+    if (process.env.NODE_ENV !== "test") {
+      if (!captchaToken) {
+        return res.status(400).json({ message: "CAPTCHA token is required." })
+      }
+
+      const isHuman = await verifyRecaptcha(captchaToken)
+      if (!isHuman) {
+        return res.status(400).json({ message: "CAPTCHA verification failed." })
+      }
+    }
+
     // Check if user already exists
     const existingUser = await User.findOne({ email })
     if (existingUser) {
