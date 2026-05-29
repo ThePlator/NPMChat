@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from "react"
 import { useAuth } from "../../app/AuthContext"
 import { useMessageContext } from "../../app/MessageContext"
 import { useRouter } from "next/navigation"
+import PomodoroTimer from "./PomodoroTimer"
 
 interface RoomMessage {
   roomId: string
@@ -196,6 +197,8 @@ export default function RoomChatPanel({ roomId }: { roomId: string }) {
             Leave Room
           </button>
         </div>
+
+        <PomodoroTimer roomId={roomId} />
 
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-[#f3e8ff]/80 dark:bg-accent/80 backdrop-blur-sm">
           <div className="text-center font-bold text-xs text-gray-500 dark:text-gray-400 my-4 uppercase tracking-widest bg-white/50 dark:bg-black/20 py-2 rounded-full mx-auto max-w-sm border border-sidebar-border">
