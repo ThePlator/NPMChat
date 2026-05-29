@@ -12,6 +12,7 @@ import { connectDB } from "./lib/db.js"
 import swaggerSpec from "./lib/swagger.js"
 import userRouter from "./routes/user.routes.js"
 import messageRouter from "./routes/message.routes.js"
+import ChallengeRoom from "./models/ChallengeRoom.js"
 import { Server } from "socket.io"
 import { isVercel, parsePort, getPlatform } from "./lib/runtime.js"
 import { registerTypingHandlers } from "./typingHandler.js"
@@ -95,6 +96,7 @@ export const io = new Server(server, {
 
 export const userSockets = new Map() // userId -> Set<socketId>
 export const roomTimers = new Map() // roomId -> { timeLeft, state, intervalId, type }
+export const userLastActive = new Map() // userId -> timestamp
 
 // Socket rate limiting: max 20 concurrent connections per IP
 const socketConnectionCounts = new Map()
@@ -145,6 +147,34 @@ io.use(async (socket, next) => {
   }
 })
 
+// Periodic delivery sweep as fallback (every 15s)
+setInterval(async () => {
+  try {
+    const undeliveredMessages = await Message.find({
+      delivered: false,
+      status: { $in: ["sent", "sending"] },
+    })
+
+    for (const msg of undeliveredMessages) {
+      const now = new Date()
+      msg.delivered = true
+      msg.status = "delivered"
+      msg.deliveredAt = now
+      await msg.save()
+
+      io.to(msg.senderId.toString()).emit("messageDelivered", {
+        messageId: msg._id.toString(),
+        status: "delivered",
+        deliveredAt: now.toISOString(),
+      })
+
+      io.to(msg.receiverId.toString()).emit("newMessage", msg.toObject())
+    }
+  } catch (error) {
+    console.error("Error during periodic delivery sweep:", error)
+  }
+}, 15000)
+
 io.on("connection", async (socket) => {
   const userId = socket.userId
   const userIdStr = userId ? userId.toString() : ""
@@ -154,6 +184,7 @@ io.on("connection", async (socket) => {
       userSockets.set(userIdStr, new Set())
     }
     userSockets.get(userIdStr).add(socket.id)
+    userLastActive.set(userIdStr, Date.now())
     socket.join(userIdStr)
     socket.data.username = socket.isGuest ? socket.guestName : userIdStr
     socket.data.isGuest = socket.isGuest
@@ -182,12 +213,19 @@ io.on("connection", async (socket) => {
 
         for (const msg of undeliveredMessages) {
           try {
+            const now = new Date()
             msg.delivered = true
+            msg.status = "delivered"
+            msg.deliveredAt = now
             await msg.save()
 
             io.to(msg.senderId.toString()).emit("messageDelivered", {
               messageId: msg._id.toString(),
+              status: "delivered",
+              deliveredAt: now.toISOString(),
             })
+
+            io.to(msg.receiverId.toString()).emit("newMessage", msg.toObject())
           } catch (saveErr) {
             if (saveErr.name === "VersionError") {
               continue
@@ -216,6 +254,35 @@ io.on("connection", async (socket) => {
     const timer = roomTimers.get(roomId)
     if (timer) {
       socket.emit("pomodoroTick", { timeLeft: timer.timeLeft, state: timer.state, type: timer.type })
+    }
+  })
+
+  socket.on("joinChallengeRoom", (challengeId) => {
+    socket.join(`challenge_${challengeId}`)
+    console.log(`User ${userIdStr} joined challenge room ${challengeId}`)
+  })
+
+  socket.on("leaveChallengeRoom", (challengeId) => {
+    socket.leave(`challenge_${challengeId}`)
+    console.log(`User ${userIdStr} left challenge room ${challengeId}`)
+  })
+
+  socket.on("challengeSubmission", async (data) => {
+    const { challengeId } = data
+    if (challengeId) {
+      try {
+        const challenge = await ChallengeRoom.findById(challengeId).populate(
+          "submissions.userId",
+          "name avatarUrl",
+        )
+        if (challenge) {
+          io.to(`challenge_${challengeId}`).emit("leaderboardUpdate", {
+            submissions: challenge.submissions,
+          })
+        }
+      } catch (err) {
+        console.error("Error fetching challenge leaderboard:", err)
+      }
     }
   })
 
@@ -300,6 +367,7 @@ io.on("connection", async (socket) => {
           userSockets.delete(userIdStr)
         }
       }
+      userLastActive.set(userIdStr, Date.now())
       console.log(`User disconnected: ${userIdStr} (socket: ${socket.id})`)
     }
     io.emit("getOnlineUsers", Array.from(userSockets.keys()))
@@ -327,9 +395,14 @@ app.use("/api/health", (req, res) => {
   })
 })
 
+import problemRouter from "./routes/problem.route.js"
+import challengeRouter from "./routes/challenge.routes.js"
+
 // Apply strict limiter to auth routes, and standard limiter to message routes
 app.use("/api/v1/auth", authLimiter, userRouter)
 app.use("/api/v1/messages", standardLimiter, messageRouter)
+app.use("/api/v1/problems", standardLimiter, problemRouter)
+app.use("/api/v1/challenges", standardLimiter, challengeRouter)
 
 app.use("/", (req, res) => {
   res.send("NPMChat API is running")
@@ -345,6 +418,8 @@ if (process.env.NODE_ENV !== "test") {
       console.error("DB Connection Failed", err)
     })
 }
+import initCronJobs from "./lib/cron.js"
+
 if (isVercel()) {
   console.log(
     "Running in Vercel Serverless environment. Skipping server.listen() and exporting Express app.",
@@ -356,6 +431,7 @@ if (isVercel()) {
       `Server is running on port ${port} in ${getPlatform()} environment`,
     )
     console.log(`CORS allowed origins: ${allowedOrigins.join(", ")}`)
+    initCronJobs()
   })
 }
 

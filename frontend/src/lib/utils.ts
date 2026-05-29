@@ -18,3 +18,10 @@ export function getInitials(name?: string): string {
   return (trimmed[0] || "?").toUpperCase()
 }
 
+export function generateClientId(): string {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID()
+  }
+  return `msg-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+}
+

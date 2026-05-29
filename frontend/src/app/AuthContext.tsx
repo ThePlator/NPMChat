@@ -1,6 +1,17 @@
 "use client"
-import React, { createContext, useContext, useState, useEffect } from "react"
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react"
 import { api, setToken } from "./fetcher"
+
+type SessionRestoreCallback = () => void
+const sessionRestoreListeners: SessionRestoreCallback[] = []
+
+export function addSessionRestoreListener(cb: SessionRestoreCallback) {
+  sessionRestoreListeners.push(cb)
+  return () => {
+    const idx = sessionRestoreListeners.indexOf(cb)
+    if (idx >= 0) sessionRestoreListeners.splice(idx, 1)
+  }
+}
 
 export interface User {
   id?: string
@@ -40,6 +51,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const res = await api.post("/refresh", {}, "auth")
         setToken(res.token)
         await checkAuth()
+        sessionRestoreListeners.forEach((cb) => cb())
       } catch (e) {
         setLoading(false)
       }

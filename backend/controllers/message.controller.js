@@ -7,6 +7,11 @@ export const getUserForSidebar = async (req, res) => {
   try {
     const userId = req.user._id // Get the user ID from the request object
 
+    // Guests do not have a sidebar of DMs
+    if (typeof userId === "string" && userId.startsWith("guest-")) {
+      return res.status(200).json({ users: [], unseenMessages: {} })
+    }
+
     const [filteredUser, unseenMessageCounts] = await Promise.all([
       User.find({ _id: { $ne: userId } })
         .select("-password -refreshTokenHash -refreshTokenId")
@@ -48,31 +53,18 @@ export const getUserForSidebar = async (req, res) => {
   }
 }
 
-// get all messages for slected user
+// get all messages for selected user (does NOT auto-mark-seen — use dedicated endpoint)
 export const getMessages = async (req, res) => {
   try {
-    const { userId } = req.params // Get the userId from the request parameters
-    const currentUserId = req.user._id // Get the current user's ID from the request object
+    const { userId } = req.params
+    const currentUserId = req.user._id
 
-    // Find messages between the current user and the selected user
     const messages = await Message.find({
       $or: [
         { senderId: currentUserId, receiverId: userId },
         { senderId: userId, receiverId: currentUserId },
       ],
-    }).sort({ createdAt: 1 }) // Sort messages by creation date
-
-    // Mark messages as seen if they are from the selected user
-    const updateResult = await Message.updateMany(
-      { senderId: userId, receiverId: currentUserId, seen: false },
-      { $set: { seen: true } },
-    )
-
-    if (updateResult.modifiedCount > 0) {
-      io.to(userId.toString()).emit("messageSeen", {
-        userId: currentUserId.toString(),
-      })
-    }
+    }).sort({ createdAt: 1 })
 
     res.status(200).json(messages)
   } catch (error) {
@@ -81,21 +73,73 @@ export const getMessages = async (req, res) => {
   }
 }
 
-// api to mark messages as seen using messageId
+// get unseen messages for reconnecting clients, with optional cursor
+export const syncMessages = async (req, res) => {
+  try {
+    const userId = req.user._id
+
+    // Guests do not have persisted messages
+    if (req.user.isGuest) {
+      return res.status(200).json([])
+    }
+
+    const after = req.query.after ? new Date(req.query.after) : new Date(0)
+
+    const messages = await Message.find({
+      receiverId: userId,
+      createdAt: { $gt: after },
+      $or: [
+        { receiverDeletedAt: null },
+        { receiverDeletedAt: { $exists: false } },
+      ],
+    }).sort({ createdAt: 1 })
+
+    res.status(200).json(messages)
+  } catch (error) {
+    console.error("Error syncing messages:", error)
+    res.status(500).json({ message: "Internal server error." })
+  }
+}
+
+// batch mark all messages from a sender as read
+export const markConversationSeen = async (req, res) => {
+  try {
+    const { senderId } = req.params
+    const receiverId = req.user._id
+    const now = new Date()
+
+    const result = await Message.updateMany(
+      { senderId, receiverId, status: { $ne: "read" } },
+      { $set: { seen: true, status: "read", readAt: now } },
+    )
+
+    if (result.modifiedCount > 0) {
+      io.to(senderId.toString()).emit("messageSeen", {
+        userId: receiverId.toString(),
+      })
+    }
+
+    res.status(200).json({ modifiedCount: result.modifiedCount })
+  } catch (error) {
+    console.error("Error marking conversation as seen:", error)
+    res.status(500).json({ message: "Internal server error." })
+  }
+}
+
+// mark a single message as seen
 export const markMessagesAsSeen = async (req, res) => {
   try {
-    const { messageId } = req.params // Get the messageId from the request parameters
+    const { messageId } = req.params
     const receiverId = req.user._id
+    const now = new Date()
 
-    // Safe flow: find the message first to get senderId and ensure it's for this receiver
     const message = await Message.findOne({
       _id: messageId,
       receiverId,
-      seen: false,
+      status: { $ne: "read" },
     })
 
     if (!message) {
-      // If already seen or not found, still return 200 if it belongs to this receiver
       const existingMessage = await Message.findOne({
         _id: messageId,
         receiverId,
@@ -111,18 +155,19 @@ export const markMessagesAsSeen = async (req, res) => {
     const senderId = message.senderId
 
     message.seen = true
+    message.status = "read"
+    message.readAt = now
+
     try {
       await message.save()
     } catch (saveErr) {
       if (saveErr.name === "VersionError") {
-        // Message was concurrently modified, fetch latest and return
         const updated = await Message.findById(message._id)
         return res.status(200).json(updated)
       }
       throw saveErr
     }
 
-    // Notify the original sender
     io.to(senderId.toString()).emit("messageSeen", {
       userId: receiverId.toString(),
       messageId: message._id.toString(),
@@ -135,12 +180,13 @@ export const markMessagesAsSeen = async (req, res) => {
   }
 }
 
-// send message to selected user
+// send message to selected user with full state machine
 export const sendMessage = async (req, res) => {
   try {
-    const { text, image } = req.body // Get the message text and image from the request body
-    const receiverId = req.params.receiverId // Get the receiver's userId from the request parameter
-    const senderId = req.user._id // Get the sender's userId from the
+    const { text, image, clientId } = req.body
+    const receiverId = req.params.receiverId
+    const senderId = req.user._id
+    const now = new Date()
 
     if (!text && !image) {
       return res.status(400).json({ message: "Message content is required." })
@@ -149,28 +195,41 @@ export const sendMessage = async (req, res) => {
     let imageUrl
     if (image) {
       const uploadedImage = await cloudinary.uploader.upload(image)
-      imageUrl = uploadedImage.secure_url // Get the secure URL of the uploaded image
+      imageUrl = uploadedImage.secure_url
     }
 
     const isReceiverOnline = userSockets.has(receiverId.toString())
 
+    const conversationId = [senderId.toString(), receiverId.toString()]
+      .sort()
+      .join(":")
+
     const newMessage = await Message.create({
       senderId,
       receiverId,
+      conversationId,
       text,
       image: imageUrl || "",
       delivered: isReceiverOnline,
+      status: isReceiverOnline ? "delivered" : "sent",
+      sentAt: now,
+      deliveredAt: isReceiverOnline ? now : null,
     })
 
-    io.to(receiverId.toString()).emit("newMessage", newMessage)
+    io.to(receiverId.toString()).emit("newMessage", {
+      ...newMessage.toObject(),
+      clientId,
+    })
 
     io.to(senderId.toString()).emit("messageDelivered", {
       messageId: newMessage._id.toString(),
+      status: newMessage.status,
+      deliveredAt: newMessage.deliveredAt,
     })
 
     res.status(201).json({
       message: "Message sent successfully.",
-      data: newMessage,
+      data: { ...newMessage.toObject(), clientId },
     })
   } catch (error) {
     console.error("Error sending message:", error)
