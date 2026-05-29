@@ -188,6 +188,10 @@ export const sendMessage = async (req, res) => {
     const senderId = req.user._id
     const now = new Date()
 
+    if (!text && !image) {
+      return res.status(400).json({ message: "Message content is required." })
+    }
+
     let imageUrl
     if (image) {
       const uploadedImage = await cloudinary.uploader.upload(image)

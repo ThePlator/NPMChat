@@ -95,6 +95,7 @@ export const io = new Server(server, {
 })
 
 export const userSockets = new Map() // userId -> Set<socketId>
+export const roomTimers = new Map() // roomId -> { timeLeft, state, intervalId, type }
 export const userLastActive = new Map() // userId -> timestamp
 
 // Socket rate limiting: max 20 concurrent connections per IP
@@ -250,6 +251,10 @@ io.on("connection", async (socket) => {
       username: socket.data.username,
       isGuest: socket.isGuest || false,
     })
+    const timer = roomTimers.get(roomId)
+    if (timer) {
+      socket.emit("pomodoroTick", { timeLeft: timer.timeLeft, state: timer.state, type: timer.type })
+    }
   })
 
   socket.on("joinChallengeRoom", (challengeId) => {
@@ -305,6 +310,48 @@ io.on("connection", async (socket) => {
           targetSocket.emit("removedFromRoom", { roomId: data.roomId })
         }
       })
+    }
+  })
+
+  socket.on("pomodoroAction", (data) => {
+    if (socket.isGuest) return; // Only host can control timer
+    const { roomId, action, type } = data;
+    let timer = roomTimers.get(roomId);
+
+    if (action === "start") {
+      if (!timer || timer.state === "idle") {
+        timer = { timeLeft: type === "focus" ? 25 * 60 : 5 * 60, state: "active", type, intervalId: null };
+        roomTimers.set(roomId, timer);
+      } else if (timer.state === "paused") {
+        timer.state = "active";
+        timer.type = type;
+      }
+
+      if (!timer.intervalId) {
+        timer.intervalId = setInterval(() => {
+          timer.timeLeft--;
+          if (timer.timeLeft <= 0) {
+            clearInterval(timer.intervalId);
+            timer.intervalId = null;
+            timer.state = "idle";
+          }
+          io.to(roomId).emit("pomodoroTick", { timeLeft: timer.timeLeft, state: timer.state, type: timer.type });
+        }, 1000);
+      }
+      io.to(roomId).emit("pomodoroTick", { timeLeft: timer.timeLeft, state: timer.state, type: timer.type });
+    } else if (action === "pause") {
+      if (timer && timer.intervalId) {
+        clearInterval(timer.intervalId);
+        timer.intervalId = null;
+        timer.state = "paused";
+        io.to(roomId).emit("pomodoroTick", { timeLeft: timer.timeLeft, state: timer.state, type: timer.type });
+      }
+    } else if (action === "reset") {
+      if (timer) {
+        if (timer.intervalId) clearInterval(timer.intervalId);
+        roomTimers.delete(roomId);
+      }
+      io.to(roomId).emit("pomodoroTick", { timeLeft: type === "focus" ? 25 * 60 : 5 * 60, state: "idle", type });
     }
   })
 

@@ -35,6 +35,7 @@
   "devDependencies": {
     "@vitest/coverage-v8": "^4.1.7",
     "mongodb-memory-server": "^11.1.0",
+    "socket.io-client": "^4.8.3",
     "supertest": "^7.2.2",
     "vitest": "^4.1.6"
   }
