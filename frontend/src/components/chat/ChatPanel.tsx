@@ -11,6 +11,7 @@ import { ModeToggle } from "../ui/mode-toggle"
 import { Check, CheckCheck, Loader, AlertCircle, Image as ImageIcon, RefreshCw } from "lucide-react"
 import { SettingsDrawer } from "../ui/settings-drawer"
 import MediaGallery from "./MediaGallery"
+import { FileUpload } from "./FileUpload"
 
 function MessageTick({
   seen,
@@ -506,20 +507,7 @@ export default function ChatPanel({
               />
             </div>
           )}
-          <label
-            className="px-2 py-2 cursor-pointer border-2 border-sidebar-border rounded-full bg-accent hover:bg-[#b39ddb] flex items-center justify-center"
-            title="Attach image"
-          >
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleImageChange}
-            />
-            <span role="img" aria-label="Attach">
-              📎
-            </span>
-          </label>
+          <FileUpload roomId={selectedUser?._id || selectedUser?.id || ""} />
           {image && (
             <div className="relative flex items-center">
               <img

@@ -187,33 +187,28 @@ test.describe("Message Flow", () => {
       }
     })
 
-    // Set up response waits before navigation to avoid races (auto-select can fetch immediately).
-    const sidebarResponsePromise = page.waitForResponse((response) => {
-      const pathname = new URL(response.url()).pathname
-      if (pathname !== "/api/v1/messages" && pathname !== "/api/v1/messages/") return false
-      return response.request().method() === "GET" && response.status() === 200
+    // Inject token before navigation to mimic proper hydration
+    await page.addInitScript(() => {
+      window.localStorage.setItem('token', 'mock-access-token')
     })
 
-    const historyResponsePromise = page.waitForResponse((response) => {
-      const url = response.url()
-      return (
-        url.includes(`/api/v1/messages/${friendId}`) &&
-        response.request().method() === "GET" &&
-        response.status() === 200
-      )
-    })
-
-    // Navigate to chat
-    await page.goto("/chat")
-    await sidebarResponsePromise
+    // Navigate to chat and wait for the users to load simultaneously
+    const [sidebarResponse] = await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          response.url().includes("api/v1/messages") &&
+          !response.url().includes(friendId) &&
+          response.request().method() === "GET" &&
+          response.status() === 200,
+        { timeout: 15000 }
+      ),
+      page.goto("/chat")
+    ])
 
     // Wait for "Alice" to appear in the sidebar
     await expect(page.getByText("Alice").first()).toBeVisible({
       timeout: 10000,
     })
-
-    // The app auto-selects the first user; wait for the conversation fetch to complete
-    await historyResponsePromise
 
     // Verify chat history loaded
     await expect(page.getByText("Hi there")).toBeVisible({ timeout: 10000 })
@@ -222,19 +217,17 @@ test.describe("Message Flow", () => {
     const input = page.getByPlaceholder("Type a message...")
     await input.fill("Hello Playwright!")
 
-    // Prepare to wait for the send message response
-    const sendResponsePromise = page.waitForResponse(
-      (response) =>
-        response.url().includes(`/api/v1/messages/send/${friendId}`) &&
-        response.request().method() === "POST" &&
-        response.status() === 201,
-    )
-
-    // Click Send
-    await page.getByRole("button", { name: "Send" }).click()
-
-    // Wait for the send message response
-    await sendResponsePromise
+    // Click Send and wait for the network response simultaneously
+    const [sendResponse] = await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          response.url().includes(`api/v1/messages/send/${friendId}`) &&
+          response.request().method() === "POST" &&
+          response.status() === 201,
+        { timeout: 10000 }
+      ),
+      page.getByRole("button", { name: "Send" }).click()
+    ])
 
     // Verify the new message appears in the UI
     await expect(page.getByText("Hello Playwright!")).toBeVisible()
