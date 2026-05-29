@@ -93,4 +93,63 @@ describe("Integration & Concurrency Tests", () => {
         expect(finalDoc.text).toBe("First concurrent edit")
         expect(finalDoc.__v).toBe(1)
     })
+
+    it("Message status state machine - should transition sent→delivered→read correctly", async () => {
+        // Create a message (receiver is offline in tests, so status = sent)
+        const msg = await Message.create({
+            senderId: user1Id,
+            receiverId: user2Id,
+            text: "Status machine test",
+            status: "sent",
+            sentAt: new Date(),
+        })
+
+        expect(msg.status).toBe("sent")
+        expect(msg.seen).toBe(false)
+        expect(msg.readAt).toBeUndefined()
+
+        // Simulate delivery sweep
+        msg.delivered = true
+        msg.status = "delivered"
+        msg.deliveredAt = new Date()
+        await msg.save()
+
+        expect(msg.status).toBe("delivered")
+        expect(msg.deliveredAt).toBeDefined()
+
+        // Simulate mark as read
+        msg.seen = true
+        msg.status = "read"
+        msg.readAt = new Date()
+        await msg.save()
+
+        expect(msg.status).toBe("read")
+        expect(msg.seen).toBe(true)
+        expect(msg.readAt).toBeDefined()
+
+        // Verify all timestamps are in order
+        expect(msg.sentAt <= msg.deliveredAt).toBe(true)
+        expect(msg.deliveredAt <= msg.readAt).toBe(true)
+    })
+
+    it("Sync endpoint - should only return messages after cursor", async () => {
+        const before = new Date()
+        await new Promise((r) => setTimeout(r, 10))
+
+        await Message.create({
+            senderId: user1Id,
+            receiverId: user2Id,
+            text: "After cursor",
+            status: "sent",
+            sentAt: new Date(),
+        })
+
+        const res = await request(app)
+            .get(`/api/v1/messages/sync?after=${before.toISOString()}`)
+            .set("Authorization", `Bearer ${user2Token}`)
+
+        expect(res.status).toBe(200)
+        expect(res.body.length).toBe(1)
+        expect(res.body[0].text).toBe("After cursor")
+    })
 })

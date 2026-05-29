@@ -53,6 +53,21 @@ export function useTypingIndicator(
     }
   }, [selectedUserId])
 
+  // Clear stale typing on reconnect
+  useEffect(() => {
+    if (!socket) return
+
+    const handleConnect = () => {
+      setTypingUsers([])
+    }
+
+    socket.on("connect", handleConnect)
+
+    return () => {
+      socket.off("connect", handleConnect)
+    }
+  }, [socket])
+
   // Listen for other users typing
   useEffect(() => {
     if (!socket) return

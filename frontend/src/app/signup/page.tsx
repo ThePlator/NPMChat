@@ -28,7 +28,7 @@ function SignupPageContent() {
     password?: string
     name?: string
   }>({})
-  
+
   // OTP Verification States
   const [step, setStep] = useState(1) // 1 = Details, 2 = OTP Entry
   const [otpValue, setOtpValue] = useState("")
@@ -78,9 +78,10 @@ function SignupPageContent() {
       toast.success("OTP verification code sent to your email!")
       setStep(2)
       setCooldown(60) // Start 60-second cooldown
-    } catch (err: any) {
-      setErrors({ email: err.message || "Failed to send OTP" })
-      toast.error(err.message || "Failed to send OTP. Please try again.")
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to send OTP"
+      setErrors({ email: message })
+      toast.error(message || "Failed to send OTP. Please try again.")
     } finally {
       setSendingOtp(false)
     }
@@ -95,8 +96,10 @@ function SignupPageContent() {
       toast.success("A new verification code has been sent!")
       setCooldown(60)
       setOtpValue("")
-    } catch (err: any) {
-      toast.error(err.message || "Failed to resend OTP.")
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to resend OTP."
+      toast.error(message)
     } finally {
       setSendingOtp(false)
     }
@@ -112,7 +115,11 @@ function SignupPageContent() {
     setVerifyingOtp(true)
     try {
       // 1. Verify OTP with the backend to obtain an emailVerificationToken
-      const verifyRes = await api.post("/verify-otp", { email: form.email, otp: otpValue }, "auth")
+      const verifyRes = await api.post(
+        "/verify-otp",
+        { email: form.email, otp: otpValue },
+        "auth",
+      )
       const { emailVerificationToken } = verifyRes
 
       // 2. Finalize account creation
@@ -125,8 +132,12 @@ function SignupPageContent() {
       setTimeout(() => {
         router.push("/chat")
       }, 1500)
-    } catch (err: any) {
-      toast.error(err.message || "Verification failed. Please check the code and try again.")
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Verification failed. Please check the code and try again."
+      toast.error(message)
     } finally {
       setVerifyingOtp(false)
     }
@@ -171,7 +182,9 @@ function SignupPageContent() {
               className="border-2 border-black px-4 py-2 text-lg bg-card/90 dark:bg-input/70 text-foreground focus:bg-input/90 focus:outline-none focus:border-[${accent}] transition-all cursor-[url('/custom-cursor-arrow.svg'),_pointer]"
               type="email"
               value={form.email}
-              onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, email: e.target.value }))
+              }
               autoComplete="email"
               required
             />
@@ -230,7 +243,7 @@ function SignupPageContent() {
                   Strength:{" "}
                   {
                     ["Too Weak", "Weak", "Fair", "Good", "Strong"][
-                    passwordStrength.score
+                      passwordStrength.score
                     ]
                   }
                 </div>
@@ -251,9 +264,7 @@ function SignupPageContent() {
             <div className="flex justify-center">
               <ReCAPTCHA
                 sitekey={recaptchaSiteKey}
-                onChange={(token: string | null) =>
-                  setCaptchaToken(token)
-                }
+                onChange={(token: string | null) => setCaptchaToken(token)}
               />
             </div>
           )}
@@ -295,7 +306,8 @@ function SignupPageContent() {
               Enter <span style={{ color: accent }}>OTP Code</span>
             </h1>
             <p className="text-sm font-bold text-muted-foreground mt-2">
-              We've sent a 6-digit verification code to <span className="underline text-foreground">{form.email}</span>.
+              We've sent a 6-digit verification code to{" "}
+              <span className="underline text-foreground">{form.email}</span>.
             </p>
           </div>
 
@@ -319,7 +331,11 @@ function SignupPageContent() {
               onClick={handleResendOtp}
               className="border-2 border-black bg-card text-foreground font-bold text-sm py-2 rounded-none transition-all cursor-[url('/custom-cursor-click.svg'),_pointer] hover:bg-input/80 dark:hover:bg-input/90 focus:outline-none disabled:opacity-60"
             >
-              {sendingOtp ? "Resending..." : cooldown > 0 ? `Resend Code in ${cooldown}s` : "Resend Verification Code"}
+              {sendingOtp
+                ? "Resending..."
+                : cooldown > 0
+                  ? `Resend Code in ${cooldown}s`
+                  : "Resend Verification Code"}
             </button>
           </div>
         </form>

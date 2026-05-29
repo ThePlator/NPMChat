@@ -165,4 +165,44 @@ describe("Message Routes", () => {
 
     expect(res.status).toBe(403)
   })
+
+  it("POST /api/v1/messages/send/:id - should set status=sent when receiver offline", async () => {
+    const res = await request(app)
+      .post(`/api/v1/messages/send/${user2Id}`)
+      .set("Authorization", `Bearer ${user1Token}`)
+      .send({ text: "Offline test" })
+
+    expect(res.status).toBe(201)
+    expect(res.body.data.status).toBe("sent")
+    expect(res.body.data.sentAt).toBeDefined()
+  })
+
+  it("GET /api/v1/messages/sync - should return unseen messages for reconnecting client", async () => {
+    const res = await request(app)
+      .get("/api/v1/messages/sync")
+      .set("Authorization", `Bearer ${user2Token}`)
+
+    expect(res.status).toBe(200)
+    expect(Array.isArray(res.body)).toBe(true)
+    expect(res.body.length).toBeGreaterThan(0)
+    expect(res.body.every((m) => m.receiverId === user2Id)).toBe(true)
+  })
+
+  it("PUT /api/v1/messages/mark-conversation-seen/:senderId - should batch mark messages as seen", async () => {
+    const res = await request(app)
+      .put(`/api/v1/messages/mark-conversation-seen/${user1Id}`)
+      .set("Authorization", `Bearer ${user2Token}`)
+
+    expect(res.status).toBe(200)
+    expect(res.body.modifiedCount).toBeGreaterThan(0)
+
+    const msgs = await Message.find({
+      senderId: user1Id,
+      receiverId: user2Id,
+    })
+    msgs.forEach((m) => {
+      expect(m.status).toBe("read")
+      expect(m.readAt).toBeDefined()
+    })
+  })
 })
