@@ -1,5 +1,6 @@
 import express from "express"
 import { protectRoute } from "../middleware/auth.js"
+import { asyncHandler } from "../middleware/errorHandler.js"
 import {
   getMessages,
   getMediaMessages,
@@ -37,7 +38,7 @@ const messageRouter = express.Router()
  *       500:
  *         description: Internal server error
  */
-messageRouter.get("/", protectRoute, getUserForSidebar)
+messageRouter.get("/", protectRoute, asyncHandler(getUserForSidebar))
 
 /**
  * @swagger
@@ -62,7 +63,7 @@ messageRouter.get("/", protectRoute, getUserForSidebar)
  *       500:
  *         description: Internal server error
  */
-messageRouter.get("/media/:userId", protectRoute, getMediaMessages)
+messageRouter.get("/media/:userId", protectRoute, asyncHandler(getMediaMessages))
 
 /**
  * @swagger
@@ -80,7 +81,7 @@ messageRouter.get("/media/:userId", protectRoute, getMediaMessages)
  *       500:
  *         description: Internal server error
  */
-messageRouter.get("/sync", protectRoute, syncMessages)
+messageRouter.get("/sync", protectRoute, asyncHandler(syncMessages))
 
 /**
  * @swagger
@@ -105,7 +106,7 @@ messageRouter.get("/sync", protectRoute, syncMessages)
  *       500:
  *         description: Internal server error
  */
-messageRouter.get("/:userId", protectRoute, getMessages)
+messageRouter.get("/:userId", protectRoute, asyncHandler(getMessages))
 
 /**
  * @swagger
@@ -132,8 +133,16 @@ messageRouter.get("/:userId", protectRoute, getMessages)
  *       500:
  *         description: Internal server error
  */
-messageRouter.put("/mark-as-seen/:messageId", protectRoute, markMessagesAsSeen)
-messageRouter.put("/mark-conversation-seen/:senderId", protectRoute, markConversationSeen)
+messageRouter.put(
+  "/mark-as-seen/:messageId",
+  protectRoute,
+  asyncHandler(markMessagesAsSeen),
+)
+messageRouter.put(
+  "/mark-conversation-seen/:senderId",
+  protectRoute,
+  asyncHandler(markConversationSeen),
+)
 
 /**
  * @swagger
@@ -171,8 +180,12 @@ messageRouter.put("/mark-conversation-seen/:senderId", protectRoute, markConvers
  *       500:
  *         description: Internal server error
  */
-messageRouter.post("/send/:receiverId", protectRoute, sendMessage)
-messageRouter.put("/edit/:messageId", protectRoute, editMessage)
-messageRouter.delete("/delete/:messageId", protectRoute, deleteMessage)
+messageRouter.post("/send/:receiverId", protectRoute, asyncHandler(sendMessage))
+messageRouter.put("/edit/:messageId", protectRoute, asyncHandler(editMessage))
+messageRouter.delete(
+  "/delete/:messageId",
+  protectRoute,
+  asyncHandler(deleteMessage),
+)
 
 export default messageRouter

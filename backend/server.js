@@ -16,6 +16,7 @@ import ChallengeRoom from "./models/ChallengeRoom.js"
 import { Server } from "socket.io"
 import { isVercel, parsePort, getPlatform } from "./lib/runtime.js"
 import { registerTypingHandlers } from "./typingHandler.js"
+import { globalErrorHandler, notFoundHandler } from "./middleware/errorHandler.js"
 
 const app = express()
 const server = http.createServer(app)
@@ -357,9 +358,12 @@ app.use("/api/v1/messages", standardLimiter, messageRouter)
 app.use("/api/v1/problems", standardLimiter, problemRouter)
 app.use("/api/v1/challenges", standardLimiter, challengeRouter)
 
-app.use("/", (req, res) => {
+app.get("/", (req, res) => {
   res.send("NPMChat API is running")
 })
+
+app.use(notFoundHandler)
+app.use(globalErrorHandler)
 
 // 5. Database Connection
 if (process.env.NODE_ENV !== "test") {

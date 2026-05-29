@@ -13,6 +13,7 @@ import {
   loginGuest,
 } from "../controllers/user.controller.js"
 import { protectRoute } from "../middleware/auth.js"
+import { asyncHandler } from "../middleware/errorHandler.js"
 import { validateBody } from "../middleware/validate.middleware.js"
 import {
   signupSchema,
@@ -79,7 +80,7 @@ const userRouter = express.Router()
  *       500:
  *         description: Internal server error
  */
-userRouter.post("/signup", validateBody(signupSchema), signup)
+userRouter.post("/signup", validateBody(signupSchema), asyncHandler(signup))
 
 /**
  * @swagger
@@ -117,7 +118,7 @@ userRouter.post("/signup", validateBody(signupSchema), signup)
  *       500:
  *         description: Internal server error
  */
-userRouter.post("/login", validateBody(loginSchema), login)
+userRouter.post("/login", validateBody(loginSchema), asyncHandler(login))
 
 /**
  * @swagger
@@ -135,10 +136,14 @@ userRouter.post("/login", validateBody(loginSchema), login)
  *       500:
  *         description: Internal server error
  */
-userRouter.post("/refresh", refresh)
-userRouter.post("/logout", logout)
-userRouter.post("/send-otp", validateBody(sendOTPSchema), sendOTP)
-userRouter.post("/verify-otp", validateBody(verifyOTPSchema), verifyOTP)
+userRouter.post("/refresh", asyncHandler(refresh))
+userRouter.post("/logout", asyncHandler(logout))
+userRouter.post("/send-otp", validateBody(sendOTPSchema), asyncHandler(sendOTP))
+userRouter.post(
+  "/verify-otp",
+  validateBody(verifyOTPSchema),
+  asyncHandler(verifyOTP),
+)
 /**
  * @swagger
  * /api/v1/auth/guest-login:
@@ -169,18 +174,18 @@ userRouter.post("/verify-otp", validateBody(verifyOTPSchema), verifyOTP)
  *       500:
  *         description: Internal server error
  */
-userRouter.post("/guest-login", loginGuest)
+userRouter.post("/guest-login", asyncHandler(loginGuest))
 userRouter.post(
   "/forgot-password",
   validateBody(forgotPasswordSchema),
-  forgotPassword,
+  asyncHandler(forgotPassword),
 )
 userRouter.post(
   "/reset-password",
   validateBody(resetPasswordSchema),
-  resetPassword,
+  asyncHandler(resetPassword),
 )
-userRouter.get("/check-auth", protectRoute, checkAuth)
+userRouter.get("/check-auth", protectRoute, asyncHandler(checkAuth))
 
 /**
  * @swagger
@@ -218,7 +223,7 @@ userRouter.put(
   "/update-profile",
   protectRoute,
   validateBody(updateProfileSchema),
-  updateProfile,
+  asyncHandler(updateProfile),
 )
 
 export default userRouter
