@@ -222,47 +222,94 @@ userRouter.put(
   updateProfile,
 )
 
-// ── Google OAuth routes ───────────────────────────────────────────
-userRouter.get(
-  "/google",
-  passport.authenticate("google", { scope: ["profile", "email"], session: false }),
-)
+// ── Google OAuth routes (only registered when credentials are configured) ────
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  userRouter.get(
+    "/google",
+    passport.authenticate("google", { scope: ["profile", "email"], session: false }),
+  )
 
-userRouter.get(
-  "/google/callback",
-  passport.authenticate("google", {
-    session: false,
-    failureRedirect: `${process.env.CLIENT_URL}/login?error=oauth_failed`,
-  }),
-  async (req, res) => {
-    try {
-      const user = req.user
+  userRouter.get(
+    "/google/callback",
+    passport.authenticate("google", {
+      session: false,
+      failureRedirect: `${process.env.CLIENT_URL}/login?error=oauth_failed`,
+    }),
+    async (req, res) => {
+      try {
+        const user = req.user
 
-      const newRefreshToken = generateRefreshToken()
-      const newRefreshTokenId = generateRefreshTokenId()
+        const newRefreshToken = generateRefreshToken()
+        const newRefreshTokenId = generateRefreshTokenId()
 
-      user.refreshTokenHash = await bcrypt.hash(newRefreshToken, 10)
-      user.refreshTokenId = newRefreshTokenId
-      await user.save()
+        user.refreshTokenHash = await bcrypt.hash(newRefreshToken, 10)
+        user.refreshTokenId = newRefreshTokenId
+        await user.save()
 
-      const accessToken = generateAccessToken(user._id)
+        const accessToken = generateAccessToken(user._id)
 
-      setAuthCookies(res, newRefreshToken, newRefreshTokenId)
+        setAuthCookies(res, newRefreshToken, newRefreshTokenId)
 
-      res.cookie("oauthAccessToken", accessToken, {
-        httpOnly: false,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-        maxAge: 60 * 1000,
-        path: "/",
-      })
+        res.cookie("oauthAccessToken", accessToken, {
+          httpOnly: false,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+          maxAge: 60 * 1000,
+          path: "/",
+        })
 
-      res.redirect(`${process.env.CLIENT_URL}/oauth-callback`)
-    } catch (err) {
-      console.error("OAuth callback error:", err)
-      res.redirect(`${process.env.CLIENT_URL}/login?error=oauth_failed`)
-    }
-  },
-)
+        res.redirect(`${process.env.CLIENT_URL}/oauth-callback`)
+      } catch (err) {
+        console.error("OAuth callback error:", err)
+        res.redirect(`${process.env.CLIENT_URL}/login?error=oauth_failed`)
+      }
+    },
+  )
+}
+
+// ── GitHub OAuth routes (only registered when credentials are configured) ────
+if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
+  userRouter.get(
+    "/github",
+    passport.authenticate("github", { scope: ["user:email"], session: false }),
+  )
+
+  userRouter.get(
+    "/github/callback",
+    passport.authenticate("github", {
+      session: false,
+      failureRedirect: `${process.env.CLIENT_URL}/login?error=oauth_failed`,
+    }),
+    async (req, res) => {
+      try {
+        const user = req.user
+
+        const newRefreshToken = generateRefreshToken()
+        const newRefreshTokenId = generateRefreshTokenId()
+
+        user.refreshTokenHash = await bcrypt.hash(newRefreshToken, 10)
+        user.refreshTokenId = newRefreshTokenId
+        await user.save()
+
+        const accessToken = generateAccessToken(user._id)
+
+        setAuthCookies(res, newRefreshToken, newRefreshTokenId)
+
+        res.cookie("oauthAccessToken", accessToken, {
+          httpOnly: false,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+          maxAge: 60 * 1000,
+          path: "/",
+        })
+
+        res.redirect(`${process.env.CLIENT_URL}/oauth-callback`)
+      } catch (err) {
+        console.error("OAuth callback error:", err)
+        res.redirect(`${process.env.CLIENT_URL}/login?error=oauth_failed`)
+      }
+    },
+  )
+}
 
 export default userRouter
