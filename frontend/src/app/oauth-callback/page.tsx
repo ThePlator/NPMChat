@@ -1,32 +1,52 @@
 'use client'
 import { useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
+import { setToken } from '../fetcher'       // ✅ in-memory token store
 import { useAuth } from '../AuthContext'
 
+function getCookie(name: string): string | null {
+  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'))
+  return match ? decodeURIComponent(match[2]) : null
+}
+
+function deleteCookie(name: string) {
+  document.cookie = `${name}=; Max-Age=0; path=/`
+}
+
 export default function OAuthCallback() {
-  const router   = useRouter()
-  const params   = useSearchParams()
-  const { checkAuth, setToken } = useAuth() 
+  const router = useRouter()
+  const { checkAuth } = useAuth()           
 
   useEffect(() => {
-    const token = params.get('token')
-    const error = params.get('error')
+    async function finish() {
+    
+      const accessToken = getCookie('oauthAccessToken')
 
-    if (error) {
-      router.replace('/login?error=oauth_failed')
-      return
+      if (accessToken) {
+
+        setToken(accessToken)
+
+        deleteCookie('oauthAccessToken')
+      }
+
+ 
+      try {
+        await checkAuth()
+        router.replace('/chat')
+      } catch {
+        router.replace('/login?error=oauth_failed')
+      }
     }
 
-    if (token) {
-      localStorage.setItem('token', token)  
-      checkAuth().then(() => router.replace('/chat'))
-    }
+    finish()
   }, [])
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#f3e8ff]">
-      <div className="border-4 border-black bg-white p-8 font-bold text-xl"
-           style={{ boxShadow: '6px 6px 0 0 #000' }}>
+      <div
+        className="border-4 border-black bg-white p-8 font-bold text-xl animate-pulse"
+        style={{ boxShadow: '6px 6px 0 0 #000' }}
+      >
         Signing you in...
       </div>
     </div>

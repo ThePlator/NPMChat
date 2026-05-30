@@ -23,6 +23,14 @@ import {
   resetPasswordSchema,
   updateProfileSchema,
 } from "../schemas/user.schema.js"
+import {
+  generateAccessToken,
+  generateRefreshToken,
+  generateRefreshTokenId,
+  setAuthCookies,
+} from "../lib/utils.js"
+import bcrypt from "bcryptjs"
+import passport from "../lib/passport.js"
 
 const userRouter = express.Router()
 
@@ -139,6 +147,7 @@ userRouter.post("/refresh", refresh)
 userRouter.post("/logout", logout)
 userRouter.post("/send-otp", validateBody(sendOTPSchema), sendOTP)
 userRouter.post("/verify-otp", validateBody(verifyOTPSchema), verifyOTP)
+
 /**
  * @swagger
  * /api/v1/auth/guest-login:
@@ -170,16 +179,8 @@ userRouter.post("/verify-otp", validateBody(verifyOTPSchema), verifyOTP)
  *         description: Internal server error
  */
 userRouter.post("/guest-login", loginGuest)
-userRouter.post(
-  "/forgot-password",
-  validateBody(forgotPasswordSchema),
-  forgotPassword,
-)
-userRouter.post(
-  "/reset-password",
-  validateBody(resetPasswordSchema),
-  resetPassword,
-)
+userRouter.post("/forgot-password", validateBody(forgotPasswordSchema), forgotPassword)
+userRouter.post("/reset-password", validateBody(resetPasswordSchema), resetPassword)
 userRouter.get("/check-auth", protectRoute, checkAuth)
 
 /**
@@ -219,6 +220,49 @@ userRouter.put(
   protectRoute,
   validateBody(updateProfileSchema),
   updateProfile,
+)
+
+// ── Google OAuth routes ───────────────────────────────────────────
+userRouter.get(
+  "/google",
+  passport.authenticate("google", { scope: ["profile", "email"], session: false }),
+)
+
+userRouter.get(
+  "/google/callback",
+  passport.authenticate("google", {
+    session: false,
+    failureRedirect: `${process.env.CLIENT_URL}/login?error=oauth_failed`,
+  }),
+  async (req, res) => {
+    try {
+      const user = req.user
+
+      const newRefreshToken = generateRefreshToken()
+      const newRefreshTokenId = generateRefreshTokenId()
+
+      user.refreshTokenHash = await bcrypt.hash(newRefreshToken, 10)
+      user.refreshTokenId = newRefreshTokenId
+      await user.save()
+
+      const accessToken = generateAccessToken(user._id)
+
+      setAuthCookies(res, newRefreshToken, newRefreshTokenId)
+
+      res.cookie("oauthAccessToken", accessToken, {
+        httpOnly: false,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+        maxAge: 60 * 1000,
+        path: "/",
+      })
+
+      res.redirect(`${process.env.CLIENT_URL}/oauth-callback`)
+    } catch (err) {
+      console.error("OAuth callback error:", err)
+      res.redirect(`${process.env.CLIENT_URL}/login?error=oauth_failed`)
+    }
+  },
 )
 
 export default userRouter

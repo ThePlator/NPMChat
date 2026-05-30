@@ -27,7 +27,7 @@ export const protectRoute = async (req, res, next) => {
     if (!user) {
       return res.status(401).json({ message: "Not authorized, user not found" })
     }
-    req.user = user // Attach user to request object
+    req.user = user
     next()
   } catch (error) {
     if (error.name === "TokenExpiredError") {

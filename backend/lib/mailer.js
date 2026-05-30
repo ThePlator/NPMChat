@@ -58,4 +58,3 @@ export async function sendOTPEmail(to, otp) {
   })
   return { devMode: false }
 }
-

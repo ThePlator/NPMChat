@@ -11,7 +11,7 @@ const userSchema = new mongoose.Schema(
 
     password: {
       type: String,
-      required: false,  
+      required: false,
       minlength: 6,
       default: null,
     },
@@ -33,13 +33,25 @@ const userSchema = new mongoose.Schema(
 
     badges: [
       {
-        type: String, // e.g. 'first-blood', 'speedrunner', 'polyglot'
+        type: String,
       },
     ],
 
     isWeeklySubscriber: {
       type: Boolean,
       default: true,
+    },
+
+    googleId: {
+      type: String,
+      default: null,
+      index: true,
+    },
+
+    githubId: {
+      type: String,
+      default: null,
+      index: true,
     },
 
     refreshTokenHash: {
@@ -66,16 +78,6 @@ const userSchema = new mongoose.Schema(
     passwordResetUsedAt: {
       type: Date,
       default: null,
-    },
-    googleId: {          
-      type: String,
-      default: null,
-      index: true,
-    },
-    githubId: {          
-      type: String,
-      default: null,
-      index: true,
     },
   },
   { timestamps: true },
