@@ -1,6 +1,7 @@
 import Header from "../../components/Home/Header"
 import Footer from "../../components/Home/Footer"
 import FeatureCard from "../../components/Features/FeatureCard"
+import ComparisonTable from "../../components/Features/ComparisonTable"
 import {
   MessageSquare,
   Code2,
@@ -238,74 +239,7 @@ export default function FeaturesPage() {
           </div>
           <div className="overflow-x-auto -mx-4 sm:mx-0">
             <div className="min-w-[520px] sm:min-w-0 px-4 sm:px-0">
-              <div className="bg-white border-3 sm:border-4 border-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] sm:shadow-[6px_6px_0_0_rgba(0,0,0,1)] lg:shadow-[8px_8px_0_0_rgba(0,0,0,1)] overflow-hidden">
-                <div className="grid grid-cols-4 gap-0 text-black">
-                  <div className="bg-[#b39ddb] border-r-2 sm:border-r-4 border-black p-3 sm:p-4 lg:p-6 font-black text-black text-sm sm:text-base lg:text-lg">
-                    Feature
-                  </div>
-                  <div className="bg-[#39ff14] border-r-2 sm:border-r-4 border-black p-3 sm:p-4 lg:p-6 font-black text-black text-center text-sm sm:text-base">
-                    NPMChat
-                  </div>
-                  <div className="bg-gray-200 border-r-2 sm:border-r-4 border-black p-3 sm:p-4 lg:p-6 font-bold text-black text-center text-sm sm:text-base">
-                    Slack
-                  </div>
-                  <div className="bg-gray-200 p-3 sm:p-4 lg:p-6 font-bold text-black text-center text-sm sm:text-base">
-                    Discord
-                  </div>
-
-                  <div className="border-r-2 sm:border-r-4 border-t-2 sm:border-t-4 border-black p-2.5 sm:p-3 lg:p-4 font-bold text-xs sm:text-sm lg:text-base">
-                    Code Editor
-                  </div>
-                  <div className="border-r-2 sm:border-r-4 border-t-2 sm:border-t-4 border-black p-2.5 sm:p-3 lg:p-4 text-center text-green-600 font-bold">
-                    ✓
-                  </div>
-                  <div className="border-r-2 sm:border-r-4 border-t-2 sm:border-t-4 border-black p-2.5 sm:p-3 lg:p-4 text-center text-red-600 font-bold">
-                    ✗
-                  </div>
-                  <div className="border-t-2 sm:border-t-4 border-black p-2.5 sm:p-3 lg:p-4 text-center text-red-600 font-bold">
-                    ✗
-                  </div>
-
-                  <div className="border-r-2 sm:border-r-4 border-t-2 sm:border-t-4 border-black p-2.5 sm:p-3 lg:p-4 font-bold text-xs sm:text-sm lg:text-base">
-                    Code Execution
-                  </div>
-                  <div className="border-r-2 sm:border-r-4 border-t-2 sm:border-t-4 border-black p-2.5 sm:p-3 lg:p-4 text-center text-green-600 font-bold">
-                    ✓
-                  </div>
-                  <div className="border-r-2 sm:border-r-4 border-t-2 sm:border-t-4 border-black p-2.5 sm:p-3 lg:p-4 text-center text-red-600 font-bold">
-                    ✗
-                  </div>
-                  <div className="border-t-2 sm:border-t-4 border-black p-2.5 sm:p-3 lg:p-4 text-center text-red-600 font-bold">
-                    ✗
-                  </div>
-
-                  <div className="border-r-2 sm:border-r-4 border-t-2 sm:border-t-4 border-black p-2.5 sm:p-3 lg:p-4 font-bold text-xs sm:text-sm lg:text-base">
-                    Interview Mode
-                  </div>
-                  <div className="border-r-2 sm:border-r-4 border-t-2 sm:border-t-4 border-black p-2.5 sm:p-3 lg:p-4 text-center text-green-600 font-bold">
-                    ✓
-                  </div>
-                  <div className="border-r-2 sm:border-r-4 border-t-2 sm:border-t-4 border-black p-2.5 sm:p-3 lg:p-4 text-center text-red-600 font-bold">
-                    ✗
-                  </div>
-                  <div className="border-t-2 sm:border-t-4 border-black p-2.5 sm:p-3 lg:p-4 text-center text-red-600 font-bold">
-                    ✗
-                  </div>
-
-                  <div className="border-r-2 sm:border-r-4 border-t-2 sm:border-t-4 border-black p-2.5 sm:p-3 lg:p-4 font-bold text-xs sm:text-sm lg:text-base">
-                    Open Source
-                  </div>
-                  <div className="border-r-2 sm:border-r-4 border-t-2 sm:border-t-4 border-black p-2.5 sm:p-3 lg:p-4 text-center text-green-600 font-bold">
-                    ✓
-                  </div>
-                  <div className="border-r-2 sm:border-r-4 border-t-2 sm:border-t-4 border-black p-2.5 sm:p-3 lg:p-4 text-center text-red-600 font-bold">
-                    ✗
-                  </div>
-                  <div className="border-t-2 sm:border-t-4 border-black p-2.5 sm:p-3 lg:p-4 text-center text-red-600 font-bold">
-                    ✗
-                  </div>
-                </div>
-              </div>
+              <ComparisonTable />
             </div>
           </div>
         </div>
