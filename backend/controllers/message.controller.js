@@ -5,7 +5,7 @@ import { io, userSockets } from "../server.js"
 
 export const getUserForSidebar = async (req, res) => {
   try {
-    const userId = req.user._id // Get the user ID from the request object
+    const userId = req.user._id
 
     // Guests do not have a sidebar of DMs
     if (typeof userId === "string" && userId.startsWith("guest-")) {
@@ -17,25 +17,14 @@ export const getUserForSidebar = async (req, res) => {
         .select("-password -refreshTokenHash -refreshTokenId")
         .lean(),
       Message.aggregate([
-        {
-          $match: {
-            receiverId: userId,
-            seen: false,
-          },
-        },
-        {
-          $group: {
-            _id: "$senderId",
-            count: { $sum: 1 },
-          },
-        },
+        { $match: { receiverId: userId, seen: false } },
+        { $group: { _id: "$senderId", count: { $sum: 1 } } },
       ]),
     ])
 
     const unseenMessages = Object.fromEntries(
       filteredUser.map((user) => [user._id, 0]),
     )
-
     unseenMessageCounts.forEach(({ _id, count }) => {
       const senderId = _id.toString()
       if (Object.prototype.hasOwnProperty.call(unseenMessages, senderId)) {
@@ -43,10 +32,7 @@ export const getUserForSidebar = async (req, res) => {
       }
     })
 
-    res.status(200).json({
-      users: filteredUser,
-      unseenMessages: unseenMessages,
-    })
+    res.status(200).json({ users: filteredUser, unseenMessages })
   } catch (error) {
     console.error("Error fetching user for sidebar:", error)
     res.status(500).json({ message: "Internal server error." })
@@ -65,6 +51,17 @@ export const getMessages = async (req, res) => {
         { senderId: userId, receiverId: currentUserId },
       ],
     }).sort({ createdAt: 1 })
+
+    const updateResult = await Message.updateMany(
+      { senderId: userId, receiverId: currentUserId, seen: false },
+      { $set: { seen: true } },
+    )
+
+    if (updateResult.modifiedCount > 0) {
+      io.to(userId.toString()).emit("messageSeen", {
+        userId: currentUserId.toString(),
+      })
+    }
 
     res.status(200).json(messages)
   } catch (error) {
@@ -140,16 +137,11 @@ export const markMessagesAsSeen = async (req, res) => {
     })
 
     if (!message) {
-      const existingMessage = await Message.findOne({
-        _id: messageId,
-        receiverId,
-      })
+      const existingMessage = await Message.findOne({ _id: messageId, receiverId })
       if (existingMessage) {
         return res.status(200).json(existingMessage)
       }
-      return res
-        .status(404)
-        .json({ message: "Message not found or unauthorized." })
+      return res.status(404).json({ message: "Message not found or unauthorized." })
     }
 
     const senderId = message.senderId
@@ -242,21 +234,15 @@ export const editMessage = async (req, res) => {
     const message = await Message.findById(messageId)
 
     if (!message) {
-      return res.status(404).json({
-        message: "Message not found.",
-      })
+      return res.status(404).json({ message: "Message not found." })
     }
 
     if (message.deleted) {
-      return res.status(400).json({
-        message: "Deleted messages cannot be edited.",
-      })
+      return res.status(400).json({ message: "Deleted messages cannot be edited." })
     }
 
     if (message.senderId.toString() !== userId.toString()) {
-      return res.status(403).json({
-        message: "Unauthorized to edit this message.",
-      })
+      return res.status(403).json({ message: "Unauthorized to edit this message." })
     }
 
     message.text = text
@@ -265,24 +251,13 @@ export const editMessage = async (req, res) => {
 
     await message.save()
 
-    const receiverSocketId = userSockets.get(message.receiverId.toString())
-
-    const senderSocketId = userSockets.get(message.senderId.toString())
-
     io.to(message.receiverId.toString()).emit("messageEdited", message)
-
     io.to(message.senderId.toString()).emit("messageEdited", message)
 
-    res.status(200).json({
-      message: "Message edited successfully.",
-      data: message,
-    })
+    res.status(200).json({ message: "Message edited successfully.", data: message })
   } catch (error) {
     console.error("Error editing message:", error)
-
-    res.status(500).json({
-      message: "Internal server error.",
-    })
+    res.status(500).json({ message: "Internal server error." })
   }
 }
 
@@ -294,15 +269,11 @@ export const deleteMessage = async (req, res) => {
     const message = await Message.findById(messageId)
 
     if (!message) {
-      return res.status(404).json({
-        message: "Message not found.",
-      })
+      return res.status(404).json({ message: "Message not found." })
     }
 
     if (message.senderId.toString() !== userId.toString()) {
-      return res.status(403).json({
-        message: "Unauthorized to delete this message.",
-      })
+      return res.status(403).json({ message: "Unauthorized to delete this message." })
     }
 
     message.deleted = true
@@ -310,24 +281,13 @@ export const deleteMessage = async (req, res) => {
 
     await message.save()
 
-    const receiverSocketId = userSockets.get(message.receiverId.toString())
-
-    const senderSocketId = userSockets.get(message.senderId.toString())
-
     io.to(message.receiverId.toString()).emit("messageDeleted", message)
-
     io.to(message.senderId.toString()).emit("messageDeleted", message)
 
-    res.status(200).json({
-      message: "Message deleted successfully.",
-      data: message,
-    })
+    res.status(200).json({ message: "Message deleted successfully.", data: message })
   } catch (error) {
     console.error("Error deleting message:", error)
-
-    res.status(500).json({
-      message: "Internal server error.",
-    })
+    res.status(500).json({ message: "Internal server error." })
   }
 }
 

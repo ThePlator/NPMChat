@@ -1,4 +1,5 @@
 import mongoose from "mongoose"
+
 export const connectDB = async () => {
   try {
     if (process.env.NODE_ENV === "test") {
@@ -52,7 +53,7 @@ export const connectDB = async () => {
   } catch (error) {
     console.error("MongoDB connection failed:", error)
     if (process.env.NODE_ENV !== "test" && process.env.CI !== "true") {
-      process.exit(1) // Exit the process with failure
+      process.exit(1)
     }
   }
 }

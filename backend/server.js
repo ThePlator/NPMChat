@@ -1,5 +1,5 @@
-import express from "express"
 import "dotenv/config"
+import express from "express"
 import cors from "cors"
 import http from "http"
 import helmet from "helmet"
@@ -13,6 +13,7 @@ import swaggerSpec from "./lib/swagger.js"
 import userRouter from "./routes/user.routes.js"
 import messageRouter from "./routes/message.routes.js"
 import ChallengeRoom from "./models/ChallengeRoom.js"
+import passport from "./lib/passport.js"
 import { Server } from "socket.io"
 import { isVercel, parsePort, getPlatform } from "./lib/runtime.js"
 import { registerTypingHandlers } from "./typingHandler.js"
@@ -22,17 +23,20 @@ const server = http.createServer(app)
 
 const { CLIENT_URL, NODE_ENV, PORT } = process.env
 
+// ── Swagger docs ──────────────────────────────────────────────────
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec))
 
+// ── Security middleware ───────────────────────────────────────────
 app.use(helmet())
 app.use(cookieParser())
 
+// ── Rate limiters ─────────────────────────────────────────────────
 const standardLimiter =
   process.env.NODE_ENV === "test"
     ? (req, res, next) => next()
     : rateLimit({
-        windowMs: 15 * 60 * 1000, // 15 minutes
-        max: 100, // Limit each IP to 100 requests per window
+        windowMs: 15 * 60 * 1000,
+        max: 100,
         message: { error: "Too many requests, please try again later." },
         standardHeaders: true,
         legacyHeaders: false,
@@ -42,21 +46,17 @@ const authLimiter =
   process.env.NODE_ENV === "test"
     ? (req, res, next) => next()
     : rateLimit({
-        windowMs: 15 * 60 * 1000, // 15 minutes
-        max: 20, // Stricter limit for auth/login routes
-        message: {
-          error: "Too many authentication attempts, please try again later.",
-        },
+        windowMs: 15 * 60 * 1000,
+        max: 20,
+        message: { error: "Too many authentication attempts, please try again later." },
         standardHeaders: true,
         legacyHeaders: false,
       })
 
-// 1. Configure Allowed Origins
 const allowedOrigins = [
   CLIENT_URL,
-  // Add localhost for local development
   "http://localhost:3000",
-  "http://localhost:5173", // Common Vite port, just in case
+  "http://localhost:5173",
   "https://npm-chat-fxjq.vercel.app",
 ].filter(Boolean)
 
@@ -66,10 +66,8 @@ if (!CLIENT_URL && NODE_ENV === "production") {
   )
 }
 
-// 2. Configure CORS
 const corsOptions = {
   origin(origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true)
     if (allowedOrigins.includes(origin)) return callback(null, true)
     return callback(new Error(`CORS blocked origin: ${origin}`))
@@ -81,8 +79,6 @@ const corsOptions = {
 
 app.use(cors(corsOptions))
 app.options("*", cors(corsOptions))
-
-// 3. Socket.IO Setup
 
 export const io = new Server(server, {
   cors: {
@@ -192,7 +188,6 @@ io.on("connection", async (socket) => {
       `User connected: ${userIdStr} (socket: ${socket.id}, isGuest: ${socket.isGuest})`,
     )
 
-    // If guest, auto-join their specific room
     if (socket.isGuest && socket.roomId) {
       socket.join(socket.roomId)
       socket.to(socket.roomId).emit("userJoinedRoom", {
@@ -202,7 +197,6 @@ io.on("connection", async (socket) => {
       })
     }
 
-    // Delivery sweep (only for registered users, guests don't have persistent messages)
     if (!socket.isGuest) {
       try {
         const undeliveredMessages = await Message.find({
@@ -238,10 +232,8 @@ io.on("connection", async (socket) => {
     }
   }
 
-  // Register typing indicator handlers
   registerTypingHandlers(io, socket, userSockets)
 
-  // Room Handlers
   socket.on("joinRoom", (roomId) => {
     socket.join(roomId)
     console.log(`User ${userIdStr} joined room ${roomId}`)
@@ -282,7 +274,6 @@ io.on("connection", async (socket) => {
   })
 
   socket.on("roomMessage", (data) => {
-    // Ephemeral room message (not saved to DB)
     io.to(data.roomId).emit("newRoomMessage", {
       roomId: data.roomId,
       senderId: userIdStr,
@@ -294,8 +285,6 @@ io.on("connection", async (socket) => {
   })
 
   socket.on("removeGuest", (data) => {
-    // Only host should call this. Data = { roomId, guestId }
-    // In a real app, verify this socket is the host of the room
     const targetSockets = userSockets.get(data.guestId)
     if (targetSockets) {
       targetSockets.forEach((socketId) => {
@@ -308,7 +297,6 @@ io.on("connection", async (socket) => {
     }
   })
 
-  // Broadcast online users (unique user IDs with at least one active socket)
   io.emit("getOnlineUsers", Array.from(userSockets.keys()))
 
   socket.on("disconnect", () => {
@@ -328,11 +316,12 @@ io.on("connection", async (socket) => {
 })
 
 app.use(express.json({ limit: "4mb" }))
+app.use(passport.initialize())
 
-// 4. Routes with Rate Limiting applied
 app.use("/api/status", (req, res) => {
   res.status(200).json({ status: "ok" })
 })
+
 app.use("/api/health", (req, res) => {
   if (NODE_ENV === "production") {
     return res.status(200).json({ status: "ok" })
@@ -351,7 +340,6 @@ app.use("/api/health", (req, res) => {
 import problemRouter from "./routes/problem.route.js"
 import challengeRouter from "./routes/challenge.routes.js"
 
-// Apply strict limiter to auth routes, and standard limiter to message routes
 app.use("/api/v1/auth", authLimiter, userRouter)
 app.use("/api/v1/messages", standardLimiter, messageRouter)
 app.use("/api/v1/problems", standardLimiter, problemRouter)
@@ -361,16 +349,12 @@ app.use("/", (req, res) => {
   res.send("NPMChat API is running")
 })
 
-// 5. Database Connection
 if (process.env.NODE_ENV !== "test") {
   connectDB()
-    .then(() => {
-      console.log("Connected to DB")
-    })
-    .catch((err) => {
-      console.error("DB Connection Failed", err)
-    })
+    .then(() => console.log("Connected to DB"))
+    .catch((err) => console.error("DB Connection Failed", err))
 }
+
 import initCronJobs from "./lib/cron.js"
 
 if (isVercel()) {
@@ -380,13 +364,10 @@ if (isVercel()) {
 } else if (process.env.NODE_ENV !== "test") {
   const port = parsePort(process.env.PORT || 8080)
   server.listen(port, "0.0.0.0", () => {
-    console.log(
-      `Server is running on port ${port} in ${getPlatform()} environment`,
-    )
+    console.log(`Server is running on port ${port} in ${getPlatform()} environment`)
     console.log(`CORS allowed origins: ${allowedOrigins.join(", ")}`)
     initCronJobs()
   })
 }
 
-// Export for potential use in integration tests (e.g., supertest)
 export default app
